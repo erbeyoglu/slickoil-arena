@@ -1,5 +1,22 @@
 # Changelog
 
+## [2026-07-10] — Panel her zaman Tur 1'de ve optimal kartı kapalı açılır
+
+**Ne değişti:** Hoca paneli sayfa yüklendiğinde Tur 1'de açılıyor. İstisna: o anda
+gerçekten **canlı** bir tur varsa (`phase === "live"`) panel ona geçiyor — paneli
+tur ortasında yenilemek, sayaç Tur 3'ü sayarken ekranın Tur 1'i göstermesine yol
+açmasın diye. Karar `shouldAdoptRound()` fonksiyonunda toplandı.
+
+Optimal çözüm kartı artık **hiçbir zaman kendiliğinden açılmıyor** ve açık/kapalı
+durumu hatırlanmıyor; her yüklemede kapalı gelir. İfşa fazında görünür olur, açmak
+hocanın tıklamasına kalır. Optimal ağ da yalnızca kart açıkken çizilir.
+
+**Neden:** Panel, veritabanında bir önceki dersten kalan tura (ör. Tur 3 / reveal)
+kilitleniyordu. Optimal kartı ise ifşa sonrası açık kalıyor ve `localStorage` bunu
+hatırlayarak bir sonraki derste projeksiyonda açık başlatabiliyordu.
+
+**Etkisi:** Oyun mantığı, senaryo verileri ve puanlama değişmedi.
+
 ## [2026-07-10] — İki dillilik (TR/EN) ve panel düzeltmeleri
 
 **Ne değişti:** Tüm arayüz iki dilli oldu. `i18n.js` sözlüğü, `data-i18n` işaretli statik

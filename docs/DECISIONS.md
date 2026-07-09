@@ -107,3 +107,28 @@ görünmez.
 **Consequences / Sonuçları:** "✨ Optimali göster" düğmesi kaldırılmadı — o düğme
 paneli değil, **öğrenci telefonlarındaki** ifşa fazını tetikler. Ne yaptığı belirsiz
 kalmasın diye adı "Optimali sınıfa aç" (EN: "Reveal to class") oldu.
+
+Ayrıca kart, ifşa fazında görünür olsa da **kapalı** gelir ve açık/kapalı durumu
+`localStorage`'a yazılmaz (`SECT_NO_PERSIST`). Diğer satırlar hatırlanır; bu satır
+her yüklemede kapalıdır. Cevabı perdeye getirmek için bilinçli bir tıklama gerekir.
+
+---
+
+## ADR-006 — Panel yüklenince Tur 1, ama canlı tur varsa ona geç
+
+**Tarih:** 2026-07-10
+**Durum:** Kabul edildi
+
+**Bağlam:** `state` düğümü kalıcıdır. Ders bittiğinde içinde `{round: 3, phase: "reveal"}`
+kalır ve panel ertesi hafta Tur 3'te, ifşa fazında açılırdı.
+
+**Değerlendirilen seçenekler:**
+- Her yüklemede koşulsuz Tur 1 — Artı: en basit, isteneni birebir yapar. Eksi: tur ortasında paneli yenilersen sayaç Tur 3'ü sayarken ekran Tur 1'i gösterir; hoca yanlış tura teslim başlatabilir.
+- İlk anlık görüntüde yalnızca `phase === "live"` ise tura geç — Artı: normal durumların hepsinde (lobby / closed / reveal / boş) Tur 1 açılır; canlı turda tutarlılık korunur. Eksi: bir kural daha.
+
+**Karar:** İkincisi. `shouldAdoptRound(firstSnapshot, state)` saf bir fonksiyondur ve
+karar tablosu tarayıcıda doğrudan test edilir.
+
+**Sonuçları:** "Sayfa yüklenince Tur 1" beklentisi pratikte her zaman karşılanır;
+tek istisna, o anda gerçekten dönen bir turun olması — ki orada panelin ona
+kilitlenmesi zaten istenen davranıştır.

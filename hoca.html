@@ -219,8 +219,22 @@ const joinUrl = location.href.replace(/hoca\.html.*$/, "");
 $("joinUrl").textContent = joinUrl;
 $("qrImg").src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(joinUrl);
 
-// ---- katlanabilir satırların açık/kapalı durumu oturumlar arası hatırlanır
+// ---- katlanabilir satırların açık/kapalı durumu oturumlar arası hatırlanır.
+//
+// WHY: optimal çözüm satırı BUNUN DIŞINDA. O satır her yüklemede kapalı gelir ve
+// asla kendiliğinden açılmaz — projeksiyonda cevabı zamanından önce göstermemek
+// için hocanın bilinçli bir tıklaması gerekir (bkz. docs/DECISIONS.md ADR-005).
+const SECT_NO_PERSIST = ["sectOpt"];
+
 document.querySelectorAll("details.sect").forEach(d => {
+  const redrawOnOpen = () => { if (d.open) redrawNetworks(); };
+
+  if (SECT_NO_PERSIST.includes(d.id)) {
+    d.open = false;
+    d.addEventListener("toggle", redrawOnOpen);
+    return;
+  }
+
   const key = "soa_sect_" + d.id;
   const saved = localStorage.getItem(key);
   if (saved !== null) d.open = saved === "1";
@@ -228,7 +242,7 @@ document.querySelectorAll("details.sect").forEach(d => {
     localStorage.setItem(key, d.open ? "1" : "0");
     // WHY: gizliyken çizilen SVG'nin genişliği 0'dır; açılınca doğru
     // geometriyle yeniden çizilmeli (bkz. network.js → netGeometry).
-    if (d.open) redrawNetworks();
+    redrawOnOpen();
   });
 });
 
@@ -292,10 +306,23 @@ function paintPhase() {
 }
 paintPhase();
 
+// Panel normalde veritabanındaki tura kilitlenir. AMA sayfa ilk yüklendiğinde bunu
+// yapmaz: `state` bir önceki dersten kalmış olabilir (ör. Tur 3 / reveal) ve panel
+// Tur 3'te açılırdı. İlk anlık görüntüde yalnızca gerçekten CANLI bir tur varsa ona
+// geçilir; aksi halde Tur 1'de kalınır.
+function shouldAdoptRound(firstSnapshot, snapshotState) {
+  if (!snapshotState || !snapshotState.round) return false;
+  return !firstSnapshot || snapshotState.phase === "live";
+}
+
 db.ref("state").on("value", snap => {
+  const firstSnapshot = !stateArrived;
   state = snap.val();
   stateArrived = true;
-  if (state && state.round) { uiRound = state.round; paintSeg(); }
+
+  if (shouldAdoptRound(firstSnapshot, state)) uiRound = state.round;
+  paintSeg();
+
   paintPhase();
   syncTimer(); refreshAll();
 });
@@ -347,13 +374,15 @@ function refreshAll() {
   // histogram
   drawHist(rows.map(r => r.cost), revealed ? opt : null);
 
-  // ifşa satırı — yalnızca "Optimali göster"den sonra görünür ve kendiliğinden açılır
+  // İfşa satırı: "Optimali sınıfa aç"tan sonra GÖRÜNÜR olur ama KAPALI durur.
+  // Açmak hocanın tıklamasına kalmıştır; ağ da yalnızca açıkken çizilir.
   $("sectOpt").style.display = revealed ? "" : "none";
   if (revealed) {
-    $("sectOpt").open = true;
     $("optCostTxt").textContent = fmtMoney(opt);
     $("optNote").textContent = scenNote(scen);
-    drawOptimal(scen);
+    if ($("sectOpt").open) drawOptimal(scen);
+  } else {
+    $("sectOpt").open = false;
   }
 
   // genel klasman

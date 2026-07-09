@@ -23,17 +23,21 @@
 
 **Bilinen konular / açık sorular:**
 - "✨ Optimali sınıfa aç" düğmesi kaldırılmadı: `state.phase = reveal` yaparak öğrenci telefonlarındaki sonuç ekranını açar (bkz. ADR-005). Yalnızca adı değişti.
-- Boru tıklama etkileşimi (panel ve telefon) tarayıcıda elle denenmedi; headless ortamda tıklama simüle edilemedi.
 - Sunucu tarafı skor doğrulaması yok: şema olarak geçerli sahte skor gönderilebilir.
 - Aynı takma adı iki öğrenci kullanırsa skorları birleşir.
 - Ders bitince kuralları kapatın (`".write": false`) ya da skor düğümlerini temizleyin.
 
 **Sonraki adımlar (öncelik sırası):**
-1. Push et, Pages'in güncellenmesini bekle, canlı adresleri doğrula.
-2. Panelde bir boruya tıklayıp `+10` / `MAX` / `Sıfırla` düğmelerini elle dene.
-3. Dil düğmesini her iki sayfada çevirip metinlerin taşmadığını gör (özellikle EN'de "Leaderboard and distribution" başlığı).
-4. Telefonda Tur 3'ün ifşa ekranını aç: 9 akış etiketi okunur ve çakışmasız olmalı.
-5. Ders öncesi iki cihazlı tam prova.
+1. Telefonda Tur 3'ün ifşa ekranını aç: 9 akış etiketi okunur ve çakışmasız olmalı.
+2. Dil düğmesini telefonda çevirip metinlerin taşmadığını gör.
+3. Ders öncesi iki cihazlı tam prova.
+
+**Not — panel etkileşimi otomatik test edildi.** Chrome + CDP ile (Node'un yerleşik
+WebSocket'i, bağımlılıksız) gerçek tarayıcıda 27 kontrol geçiyor: Firebase bağlantısı,
+`shouldAdoptRound` karar tablosu, optimal kartının kapalı gelmesi ve başlığının maliyet
+sızdırmaması, boruya gerçek `click`, `+10` / `−10` / `MAX` (kapasiteyi aşmıyor) /
+`Sıfırla`, ve dil değiştirme. `--virtual-time-budget` kullanan headless denemeleri
+Firebase websocket'i bağlanmadan DOM'u döktüğü için yanıltıcıydı; CDP bunu çözdü.
 
 **Bu oturumda dokunulan dosyalar:**
 - `i18n.js` — yeni; TR/EN sözlüğü ve yardımcıları.
