@@ -100,3 +100,35 @@ svg.network { width: 100%; height: auto; display: block; }
 /* optimal katman (hoca ifşası) */
 .pipe-opt { stroke: var(--violet) !important; }
 .flowtag-opt { stroke: var(--violet); }
+
+/* ---------- dar ekran (telefon) ağ tipografisi ----------
+   .net-compact sınıfını renderNetwork ekler (network.js → netGeometry).
+   Kompakt geometri viewBox'ı 760 → 620 birime indirdiği için ölçek 0.51'den
+   0.63'e çıkar; buradaki punto artışıyla birleşince ağ üzerindeki sayılar
+   telefonda yaklaşık %70 büyür. Boyutlar düğüm kutularına sığacak şekilde
+   seçilmiştir — büyütmeden önce network.js'teki genişlik hesabını okuyun. */
+.network.net-compact .flowtag-text { font-size: 20px; }
+.network.net-compact .node-label { font-size: 16px; }
+.network.net-compact .node-name { font-size: 17px; }
+.network.net-compact .cust-demand { font-size: 18px; }
+.network.net-compact .cust-title { font-size: 15px; }
+.network.net-compact .col-title { font-size: 17px; }
+
+/* ---------- katlanabilir bölüm (hoca paneli) ---------- */
+details.sect { padding: 0; overflow: hidden; }
+details.sect > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 22px;
+}
+details.sect > summary::-webkit-details-marker { display: none; }
+details.sect > summary::before {
+  content: "▸"; color: var(--muted); font-size: 18px;
+  transition: transform .15s; display: inline-block;
+}
+details.sect[open] > summary::before { transform: rotate(90deg); }
+details.sect > summary:hover { background: var(--panel2); }
+details.sect > summary:focus-visible { outline: 2px solid var(--slick); outline-offset: -2px; }
+details.sect > summary .hint { margin-left: auto; font: 400 13px "Barlow", sans-serif; letter-spacing: 0; text-transform: none; color: var(--muted); }
+details.sect > .sect-body { padding: 0 18px 18px; border-top: 1px solid var(--line); padding-top: 16px; }

@@ -240,15 +240,6 @@ function onPipeTap(i) {
 }
 function hidePipeBar() { $("pipeBar").classList.remove("on"); selected = null; }
 
-function headroom(i) {
-  const [w, r] = scen.links[i];
-  const ev = evaluate(scen, flows);
-  return Math.min(
-    scen.wells[w].cap - ev.wUsed[w],
-    scen.refs[r].cap - ev.rUsed[r],
-    scen.demand - ev.delivered
-  );
-}
 function setFlow(i, v) {
   flows[i] = Math.max(0, v);
   $("pipeFlowV").textContent = flows[i];
@@ -256,7 +247,7 @@ function setFlow(i, v) {
 }
 function bump(delta) {
   if (selected == null) return;
-  if (delta > 0 && headroom(selected) < delta) {
+  if (delta > 0 && headroom(scen, flows, selected) < delta) {
     $("pipeBar").classList.remove("shake"); void $("pipeBar").offsetWidth;
     $("pipeBar").classList.add("shake");
     toast("Kapasite ya da talep sınırı — bu boruya daha fazla sığmaz", true);
@@ -269,12 +260,23 @@ $("pbMinus").onclick = () => bump(-scen.step);
 $("pbZero").onclick = () => { if (selected != null) setFlow(selected, 0); };
 $("pbMax").onclick = () => {
   if (selected == null) return;
-  const h = Math.floor(headroom(selected) / scen.step) * scen.step;
+  const h = Math.floor(headroom(scen, flows, selected) / scen.step) * scen.step;
   if (h <= 0) { bump(scen.step); return; }
   setFlow(selected, flows[selected] + h);
 };
 // boş alana tıklayınca menüyü kapat
 $("net").addEventListener("click", e => { if (e.target === $("net")) { hidePipeBar(); redraw(); } });
+
+// WHY: ağ geometrisi SVG'nin piksel genişliğine göre seçilir (network.js →
+// netGeometry). Telefon yan çevrilince eşik aşılabilir; yeniden çizmezsek
+// çizim eski geometride kalır.
+let resizeId = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeId);
+  resizeId = setTimeout(() => {
+    if (scen && $("sGame").classList.contains("on")) redraw();
+  }, 150);
+});
 
 // ---- teslim
 $("submitBtn").addEventListener("click", () => {

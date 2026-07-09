@@ -20,8 +20,35 @@
   .controls .seg button.act { background: var(--slick); color: #06251b; font-weight: 700; }
   .controls input { width: 74px; text-align: center; }
 
-  .grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
-  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  /* katlanabilir satırlar — stiller style.css → details.sect */
+  .sect + .sect { margin-top: 14px; }
+
+  /* satır 1: QR + adres yan yana */
+  .qrrow { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .qrrow img { border-radius: 12px; background: #fff; padding: 8px; }
+  .qrrow .joinbig { font-size: 26px; word-break: break-all; }
+
+  /* satır 2: hikâye + oynanabilir ağ */
+  .scenrow .story { border-left: 3px solid var(--gold); padding: 10px 16px; margin-bottom: 14px; background: var(--panel2); border-radius: 0 10px 10px 0; font-size: 17px; }
+  .playbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .playbar .readout { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .playbar .readout .k { font-size: 12px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+  .playbar .readout .v { font-size: 22px; font-weight: 700; }
+  .playbar #scenReset { margin-left: auto; }
+  .pipectl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+  .pipectl[hidden] { display: none; }
+  .pipectl #scenFlow { font-size: 24px; font-weight: 700; min-width: 54px; text-align: center; }
+  .pipectl button { padding: 8px 14px; }
+  .pipectl.shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  /* geniş projeksiyonda ağ sayfayı ele geçirmesin */
+  #netScen, #netOpt { max-width: 900px; margin: 0 auto; }
+
+  /* satır 3: sıralamalar solda, histogram sağda */
+  .boardgrid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; align-items: start; }
+  @media (max-width: 980px) { .boardgrid { grid-template-columns: 1fr; } }
+  .boardgrid h3 { font-size: 20px; margin-bottom: 8px; }
+  .boardgrid .block + .block { margin-top: 22px; }
 
   .statusline { display: flex; gap: 24px; align-items: baseline; margin-bottom: 14px; }
   .statusline .timer { font-size: 56px; font-family: "IBM Plex Mono", monospace; font-weight: 700; }
@@ -44,9 +71,7 @@
   .optline { stroke: var(--violet); stroke-width: 3; stroke-dasharray: 6 5; }
   .optlabel { fill: var(--violet); font: 700 14px "IBM Plex Mono", monospace; }
 
-  .revealbox { border: 1px solid var(--violet); }
-  .qr { text-align: center; }
-  .qr img { border-radius: 12px; background: #fff; padding: 8px; }
+  .revealbox { border-color: var(--violet); }
 </style>
 </head>
 <body>
@@ -74,41 +99,83 @@
     <div class="phase" id="scenTxt"></div>
   </div>
 
-  <div class="grid">
-    <div>
-      <div class="card">
-        <h2 class="display" style="font-size:22px;margin-bottom:8px">Canlı sıralama <span class="count" id="subCount"></span></h2>
-        <table id="lb">
-          <thead><tr><th>#</th><th>İsim</th><th class="r">Maliyet</th><th class="r">Süre</th><th class="r" id="thPts" style="display:none">Puan</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="card" style="margin-top:18px">
-        <h2 class="display" style="font-size:22px;margin-bottom:8px">Genel klasman <span class="count">(3 turun puan toplamı)</span></h2>
-        <table id="overall">
-          <thead><tr><th>#</th><th>İsim</th><th class="r">T1</th><th class="r">T2</th><th class="r">T3</th><th class="r">Toplam</th></tr></thead>
-          <tbody></tbody>
-        </table>
+  <!-- 1 — QR / öğrenci girişi -->
+  <details class="card sect" id="sectQr" open>
+    <summary>Öğrenci girişi <span class="hint">QR'ı perdeye yansıtın</span></summary>
+    <div class="sect-body qrrow">
+      <img id="qrImg" width="220" height="220" alt="Öğrenci giriş adresinin QR kodu">
+      <div>
+        <p class="muted" style="margin-bottom:6px">Telefonla okutun ya da adresi yazın:</p>
+        <p class="mono slick joinbig" id="joinUrl"></p>
       </div>
     </div>
+  </details>
 
-    <div>
-      <div class="card">
-        <h2 class="display" style="font-size:22px;margin-bottom:6px">Maliyet dağılımı</h2>
+  <!-- 2 — senaryo: hikâye + ağ -->
+  <details class="card sect" id="sectScen" open>
+    <summary>Senaryo — deneme alanı <span class="hint" id="scenHint"></span></summary>
+    <div class="sect-body scenrow">
+      <div class="story" id="scenStory"></div>
+
+      <div class="playbar">
+        <div class="readout">
+          <span class="k">Teslimat</span><span class="v mono" id="scenDelivered">—</span>
+          <span class="k">Maliyet</span><span class="v mono gold" id="scenCost">$0</span>
+          <span class="v" id="scenStatus"></span>
+        </div>
+        <button id="scenReset">Sıfırla</button>
+      </div>
+
+      <div class="pipectl" id="scenCtl" hidden>
+        <span class="display" id="scenPipeTitle"></span>
+        <span class="mono gold" id="scenPipeCost"></span>
+        <button id="scenZero">0</button>
+        <button id="scenMinus">−10</button>
+        <span class="mono slick" id="scenFlow">0</span>
+        <button id="scenPlus">+10</button>
+        <button id="scenMax">MAX</button>
+      </div>
+      <p class="muted" id="scenHelp" style="font-size:14px;margin:8px 0 12px">Boruya tıklayın → akışı ayarlayın. Bu alan yalnızca sizin denemeniz içindir; skorlara işlemez.</p>
+
+      <svg class="network" id="netScen"></svg>
+    </div>
+  </details>
+
+  <!-- 3 — sıralamalar + histogram -->
+  <details class="card sect" id="sectBoard" open>
+    <summary>Sıralama ve dağılım <span class="hint" id="subCount"></span></summary>
+    <div class="sect-body boardgrid">
+      <div>
+        <div class="block">
+          <h3 class="display">Canlı sıralama</h3>
+          <table id="lb">
+            <thead><tr><th>#</th><th>İsim</th><th class="r">Maliyet</th><th class="r">Süre</th><th class="r" id="thPts" style="display:none">Puan</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="block">
+          <h3 class="display">Genel klasman <span class="count">(3 turun puan toplamı)</span></h3>
+          <table id="overall">
+            <thead><tr><th>#</th><th>İsim</th><th class="r">T1</th><th class="r">T2</th><th class="r">T3</th><th class="r">Toplam</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3 class="display">Maliyet dağılımı</h3>
         <svg id="hist" viewBox="0 0 560 300"></svg>
       </div>
-      <div class="card revealbox" id="revealCard" style="margin-top:18px;display:none">
-        <h2 class="display violet" style="font-size:22px;margin-bottom:6px">Optimal çözüm — <span class="mono" id="optCostTxt"></span></h2>
-        <p class="muted" id="optNote" style="font-size:14px;margin-bottom:10px"></p>
-        <svg class="network" id="netOpt"></svg>
-      </div>
-      <div class="card qr" style="margin-top:18px">
-        <h2 class="display" style="font-size:20px;margin-bottom:10px">Öğrenci girişi</h2>
-        <img id="qrImg" width="200" height="200" alt="QR">
-        <p class="mono muted" id="joinUrl" style="margin-top:8px;font-size:13px"></p>
-      </div>
     </div>
-  </div>
+  </details>
+
+  <!-- 4 — optimal ifşası -->
+  <details class="card sect revealbox" id="sectOpt" style="display:none">
+    <summary class="violet">Optimal çözüm — <span class="mono" id="optCostTxt"></span></summary>
+    <div class="sect-body">
+      <p class="muted" id="optNote" style="font-size:15px;margin-bottom:12px"></p>
+      <svg class="network" id="netOpt"></svg>
+    </div>
+  </details>
 
   <p class="muted" style="margin-top:26px;font-size:13px">Michael Watson'ın <em>Slick Oil</em> oyunundan uyarlanmıştır (Opex Analytics / LLamasoft; web versiyonu Rémi Lequette).</p>
 </div>
@@ -128,21 +195,47 @@ let state = null;          // rtdb state
 let scoresCache = { r1: {}, r2: {}, r3: {} };
 let timerId = null;
 
+// Senaryo satırının yerel deneme durumu (Firebase'e yazılmaz, skorları etkilemez).
+// WHY: bu tanımlar refreshAll()'un ilk çağrısından ÖNCE gelmeli — aksi halde
+// drawScenario onlara temporal dead zone içinde erişir.
+let scenDrawnFor = null;   // senaryo ağı hangi tur için çizildi
+const scenFlows = {};      // tur anahtarı → akış dizisi (turlar arası korunur)
+let scenSel = null;        // seçili boru indeksi
+
 // ---- QR + link
 const joinUrl = location.href.replace(/hoca\.html.*$/, "");
 $("joinUrl").textContent = joinUrl;
-$("qrImg").src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(joinUrl);
+$("qrImg").src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(joinUrl);
+
+// ---- katlanabilir satırların açık/kapalı durumu oturumlar arası hatırlanır
+document.querySelectorAll("details.sect").forEach(d => {
+  const key = "soa_sect_" + d.id;
+  const saved = localStorage.getItem(key);
+  if (saved !== null) d.open = saved === "1";
+  d.addEventListener("toggle", () => {
+    localStorage.setItem(key, d.open ? "1" : "0");
+    // WHY: gizliyken çizilen SVG'nin genişliği 0'dır; açılınca doğru
+    // geometriyle yeniden çizilmeli (bkz. network.js → netGeometry).
+    if (d.open) redrawNetworks();
+  });
+});
 
 // ---- tur seçimi
 document.querySelectorAll("#roundSeg button").forEach(b => {
   b.addEventListener("click", () => { uiRound = +b.dataset.r; paintSeg(); refreshAll(); });
 });
 function paintSeg() {
+  const scen = SCENARIOS[uiRound];
   document.querySelectorAll("#roundSeg button").forEach(b => b.classList.toggle("act", +b.dataset.r === uiRound));
-  $("scenTxt").textContent = SCENARIOS[uiRound].title + " — talep " + SCENARIOS[uiRound].demand + "🛢";
+  $("scenTxt").textContent = scen.title + " — talep " + scen.demand + "🛢";
+  $("scenHint").textContent = `${scen.title} — ${scen.wells.length} kuyu × ${scen.refs.length} rafineri, talep ${scen.demand}🛢`;
   $("durMin").value = { 1: 5, 2: 4, 3: 7 }[uiRound];
 }
 paintSeg();
+// WHY: senaryo ağı, tablolar ve histogram tamamen yereldir. Firebase'in ilk
+// "value" olayını beklemeden çiz — veritabanı yavaşsa ya da erişilemiyorsa
+// panel boş açılmasın, hoca yine de ağ üzerinde deneme yapabilsin.
+refreshAll();
 
 // ---- kontroller
 $("btnStart").onclick = () => {
@@ -189,8 +282,13 @@ function refreshAll() {
   const revealed = state && state.phase === "reveal";
   const opt = scen.optimal.cost;
 
+  // senaryo satırı — yalnızca tur değişince yeniden çiz.
+  // WHY: her skor güncellemesinde yeniden çizmek, hocanın üzerinde çalıştığı
+  // ağı ve seçili boruyu sıfırlar.
+  if (scenDrawnFor !== scen.key) drawScenario(scen);
+
   // liderlik tablosu
-  $("subCount").textContent = `(${Object.keys(scoresCache[k]).length} teslim, ${rows.length} oyuncu)`;
+  $("subCount").textContent = `${Object.keys(scoresCache[k]).length} teslim, ${rows.length} oyuncu`;
   $("thPts").style.display = revealed ? "" : "none";
   const tb = $("lb").querySelector("tbody");
   tb.innerHTML = "";
@@ -208,19 +306,114 @@ function refreshAll() {
   // histogram
   drawHist(rows.map(r => r.cost), revealed ? opt : null);
 
-  // ifşa kartı
-  $("revealCard").style.display = revealed ? "" : "none";
+  // ifşa satırı — yalnızca "Optimali göster"den sonra görünür ve kendiliğinden açılır
+  $("sectOpt").style.display = revealed ? "" : "none";
   if (revealed) {
+    $("sectOpt").open = true;
     $("optCostTxt").textContent = fmtMoney(opt);
     $("optNote").textContent = scen.optimal.note;
-    renderNetwork($("netOpt"), scen, optimalFlowArray(scen), null, null);
-    $("netOpt").querySelectorAll(".pipe-on").forEach(p => p.classList.add("pipe-opt"));
-    $("netOpt").querySelectorAll(".flowtag").forEach(p => p.classList.add("flowtag-opt"));
+    drawOptimal(scen);
   }
 
   // genel klasman
   drawOverall();
 }
+
+// ---- senaryo satırı: hikâye + hocanın kendi deneyebileceği ağ
+// Her turun akışları ayrı tutulur, tur değiştirip geri dönünce kaybolmaz.
+function flowsFor(scen) {
+  if (!scenFlows[scen.key]) scenFlows[scen.key] = scen.links.map(() => 0);
+  return scenFlows[scen.key];
+}
+
+function drawScenario(scen) {
+  if (scenDrawnFor !== scen.key) {
+    scenDrawnFor = scen.key;
+    scenSel = null;
+    $("scenStory").innerHTML = `<strong class="display">${scen.title}</strong><br>${scen.story}`;
+  }
+  paintScenario(scen);
+}
+
+function paintScenario(scen) {
+  const flows = flowsFor(scen);
+  const ev = renderNetwork($("netScen"), scen, flows, scenSel, i => onScenTap(scen, i));
+  $("scenDelivered").textContent = `${ev.delivered} / ${scen.demand}🛢`;
+  $("scenCost").textContent = fmtMoney(ev.cost);
+  const done = ev.delivered === scen.demand && ev.feasible;
+  $("scenStatus").textContent = done ? "✓ geçerli çözüm" : "";
+  $("scenStatus").className = "v slick";
+  $("scenCtl").hidden = scenSel == null;
+  if (scenSel != null) {
+    const [w, r] = scen.links[scenSel];
+    $("scenPipeTitle").textContent = `Kuyu ${scen.wells[w].name} → Rafineri ${scen.refs[r].name}`;
+    $("scenPipeCost").textContent = "$" + unitCost(scen, scenSel) + "/varil";
+    $("scenFlow").textContent = flows[scenSel];
+  }
+}
+
+function onScenTap(scen, i) {
+  scenSel = (scenSel === i) ? null : i;
+  paintScenario(scen);
+}
+
+function scenBump(delta) {
+  const scen = SCENARIOS[uiRound];
+  if (scenSel == null) return;
+  const flows = flowsFor(scen);
+  if (delta > 0 && headroom(scen, flows, scenSel) < delta) {
+    const ctl = $("scenCtl");
+    ctl.classList.remove("shake"); void ctl.offsetWidth; ctl.classList.add("shake");
+    return;
+  }
+  flows[scenSel] = Math.max(0, flows[scenSel] + delta);
+  paintScenario(scen);
+}
+
+$("scenPlus").onclick = () => scenBump(SCENARIOS[uiRound].step);
+$("scenMinus").onclick = () => scenBump(-SCENARIOS[uiRound].step);
+$("scenZero").onclick = () => {
+  const scen = SCENARIOS[uiRound];
+  if (scenSel == null) return;
+  flowsFor(scen)[scenSel] = 0;
+  paintScenario(scen);
+};
+$("scenMax").onclick = () => {
+  const scen = SCENARIOS[uiRound];
+  if (scenSel == null) return;
+  const flows = flowsFor(scen);
+  const h = Math.floor(headroom(scen, flows, scenSel) / scen.step) * scen.step;
+  if (h <= 0) { scenBump(scen.step); return; }
+  flows[scenSel] += h;
+  paintScenario(scen);
+};
+$("scenReset").onclick = () => {
+  const scen = SCENARIOS[uiRound];
+  scenFlows[scen.key] = scen.links.map(() => 0);
+  scenSel = null;
+  paintScenario(scen);
+};
+// boş alana tıklayınca seçimi bırak
+$("netScen").addEventListener("click", e => {
+  if (e.target === $("netScen")) { scenSel = null; paintScenario(SCENARIOS[uiRound]); }
+});
+
+// ---- optimal akış ağı (mor katman)
+function drawOptimal(scen) {
+  renderNetwork($("netOpt"), scen, optimalFlowArray(scen), null, null);
+  $("netOpt").querySelectorAll(".pipe-on").forEach(p => p.classList.add("pipe-opt"));
+  $("netOpt").querySelectorAll(".flowtag").forEach(p => p.classList.add("flowtag-opt"));
+}
+
+// ---- pencere yeniden boyutlanınca / bölüm açılınca ağları yeniden çiz
+function redrawNetworks() {
+  const scen = SCENARIOS[uiRound];
+  // Akışlar ve seçim korunur; yalnızca yeni genişliğe göre yeniden çizilir.
+  if ($("sectScen").open) paintScenario(scen);
+  if ($("sectOpt").open && $("sectOpt").style.display !== "none") drawOptimal(scen);
+}
+let resizeId = null;
+window.addEventListener("resize", () => { clearTimeout(resizeId); resizeId = setTimeout(redrawNetworks, 150); });
 
 function drawOverall() {
   const pts = {};

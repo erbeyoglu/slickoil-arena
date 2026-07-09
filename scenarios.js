@@ -133,6 +133,19 @@ function evaluate(scen, flows) {
   return { wUsed, rUsed, delivered, cost, feasible: okW && okR && delivered === scen.demand };
 }
 
+// Bir hatta EK olarak konabilecek en fazla akış: kuyunun kalan kapasitesi,
+// rafinerinin kalan kapasitesi ve karşılanmamış talep — hangisi küçükse.
+// Hem öğrenci oyunu (index.html) hem hoca panelinin deneme modu (hoca.html) kullanır.
+function headroom(scen, flows, li) {
+  const [w, r] = scen.links[li];
+  const ev = evaluate(scen, flows);
+  return Math.min(
+    scen.wells[w].cap - ev.wUsed[w],
+    scen.refs[r].cap - ev.rUsed[r],
+    scen.demand - ev.delivered
+  );
+}
+
 // optimal.flows ([w,r,f] üçlüleri) → link-indeksli akış dizisi
 function optimalFlowArray(scen) {
   const flows = scen.links.map(() => 0);

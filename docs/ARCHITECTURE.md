@@ -29,9 +29,9 @@ dosyaları servis eder; tek dinamik bileşen Firebase Realtime Database'dir.
 | Dosya | Sorumluluk |
 |---|---|
 | `index.html` | Öğrenci istemcisi: katılım, ağ üzerinde akış düzenleme, teslim, sonuç/ifşa ekranı. Tek yazma noktası: `scores/rN` altına push. |
-| `hoca.html` | Kontrol paneli: `state` düğümünü yazar (lobby → live → closed → reveal), leaderboard/histogram/genel klasman çizer, QR üretir. |
-| `scenarios.js` | Üç senaryonun verisi, LP ile doğrulanmış optimumlar ve paylaşılan saf fonksiyonlar (`evaluate`, `optimalFlowArray`, `unitCost`, `fmtMoney`). |
-| `network.js` | SVG ağ çizici. Hem oyun hem de optimal ifşa aynı çizicidir. |
+| `hoca.html` | Kontrol paneli: `state` düğümünü yazar (lobby → live → closed → reveal), leaderboard/histogram/genel klasman çizer, QR üretir. Dört katlanabilir satır: QR, senaryo (deneme alanı), sıralama+histogram, optimal ifşası. |
+| `scenarios.js` | Üç senaryonun verisi, LP ile doğrulanmış optimumlar ve paylaşılan saf fonksiyonlar (`evaluate`, `headroom`, `optimalFlowArray`, `unitCost`, `fmtMoney`). |
+| `network.js` | SVG ağ çizici. Oyun, hoca deneme alanı ve optimal ifşası aynı çiziciyi kullanır. |
 | `style.css` | Tasarım sistemi (renk değişkenleri, kart, buton, ağ stilleri). |
 | `database.rules.json` | Güvenlik kuralları; Console'a yapıştırılan sürümün kaynağıdır. |
 | `tools/verify-scenarios.mjs` | Senaryo verisi bütünlük testi. |
@@ -55,6 +55,39 @@ Süre dolduğunda `closed`'a geçişi **hoca paneli** yazar (`hoca.html`, `syncT
   kapasite aşmayan çözümler gönderilebilir (`submitBtn` aksi halde devre dışıdır).
 - Her oyuncunun bir turdaki **en iyi** teslimi sayılır (`bestPerName`); eşitlikte erken teslim önde.
 - Genel klasman üç turun puan toplamıdır.
+
+## Ağ çizimi: iki geometri
+
+`network.js` iki yerleşim sabiti tutar ve SVG'nin **piksel genişliğine** göre seçer
+(`netGeometry`, eşik 520px):
+
+| | viewBox | Düğüm genişliği | Kullanım |
+|---|---|---|---|
+| `NET_WIDE` | 760 | 136 | projeksiyon, tablet, masaüstü |
+| `NET_COMPACT` | 660 | 156 | telefon |
+
+Kompakt geometri boru boşluklarını kısaltıp düğümleri genişletir; viewBox daraldığı
+için aynı SVG telefonda daha büyük ölçekte çizilir. Fontlar `style.css` içindeki
+`.net-compact` kurallarıyla büyütülür. Sonuç: 390px'lik bir ekranda akış rakamları
+7.7px yerine ~11.8px.
+
+Düğüm genişlikleri en uzun etikete (`$2.5 | 100🛢`) göre seçilmiştir. Punto veya
+etiket biçimi değişirse `network.js` başındaki genişlik hesabı yeniden yapılmalıdır.
+
+Akış etiketleri `layoutFlowTags` ile çakışmadan yerleştirilir: her etiket, hattı
+üzerindeki yedi aday noktadan (t = 2/3, 1/3, …) boş olan ilkine konur; hepsi doluysa
+hattından birkaç birim aşağı kaydırılır. Yalnızca **çizilecek** etiketler dikkate
+alınır — akışı sıfır olan bir hat, görünen bir etiketi kaydırmamalıdır.
+
+## Hoca deneme alanı
+
+Panelin "Senaryo" satırındaki ağ etkileşimlidir: hoca boruya tıklayıp akış girebilir,
+maliyeti ve teslimatı canlı görür. Bu tamamen yereldir — Firebase'e hiçbir şey
+yazılmaz, skorları etkilemez. Her turun akışları ayrı tutulur (`scenFlows`), tur
+değiştirip geri dönünce korunur.
+
+Kapasite sınırı hesabı (`headroom`) öğrenci oyunuyla **aynı fonksiyondur**
+(`scenarios.js`); iki ayrı kopya tutulmaz.
 
 ## Bilinçli tasarım kısıtları
 
