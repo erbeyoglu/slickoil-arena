@@ -1,0 +1,17 @@
+# OS / editör
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Yandex.Disk
+.sync/
+*.yandex
+
+# Node (bu proje build'siz; yalnızca yerel yardımcı scriptler için)
+node_modules/
+npm-debug.log*
+
+# yerel not dosyası (veritabanı URL kopyası)
+firebase.txt

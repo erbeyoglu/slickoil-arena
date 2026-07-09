@@ -1,0 +1,37 @@
+Slick Oil Arena — IE101 sınıf yarışması sürümü
+Copyright (c) 2026 Gökalp Erbeyoğlu (Özyeğin Üniversitesi, IE101)
+
+Bu depodaki kod ve senaryo verileri eğitim amaçlıdır ve MIT Lisansı altında
+sunulmaktadır. Ticari kullanım için orijinal oyunun sahiplerine danışınız.
+
+--- Atıflar / Attribution ---
+
+Oyun konsepti: Michael Watson (Opex Analytics / LLamasoft).
+  https://miketalksai.substack.com/p/slick-oil-is-back-online
+Orijinal web uygulaması: Rémi Lequette.
+  https://slickoilgame.github.io/
+
+Bu depo, yukarıdaki çalışmalardan bağımsız olarak yeniden yazılmış, çok turlu
+bir sınıf yarışması uyarlamasıdır. Orijinal eserlerin sahipleriyle resmi bir
+bağlantısı ya da onların onayı yoktur. Orijinal eserlerin hakları sahiplerine
+aittir; bu lisans yalnızca bu depodaki özgün kodu kapsar.
+
+--- MIT License ---
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

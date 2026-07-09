@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Petrol damlası">
+  <path d="M32 3C32 3 12 27.5 12 40a20 20 0 1 0 40 0C52 27.5 32 3 32 3z" fill="#0b0f14"/>
+  <path d="M32 9C32 9 16 29.5 16 40a16 16 0 1 0 32 0C48 29.5 32 9 32 9z" fill="#37d9a8"/>
+  <path d="M24 40a8 8 0 0 1 5-7.4" fill="none" stroke="#0b0f14" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+</svg>

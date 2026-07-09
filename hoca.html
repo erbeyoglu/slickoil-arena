@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slick Oil Arena — Hoca Paneli</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 20px; }
+  .topbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 18px; }
+  .topbar h1 { font-size: 34px; margin-right: auto; }
+  .topbar h1 .drop { color: var(--gold); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .controls .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .controls .seg button { border: 0; border-radius: 0; padding: 10px 18px; }
+  .controls .seg button.act { background: var(--slick); color: #06251b; font-weight: 700; }
+  .controls input { width: 74px; text-align: center; }
+
+  .grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+  .statusline { display: flex; gap: 24px; align-items: baseline; margin-bottom: 14px; }
+  .statusline .timer { font-size: 56px; font-family: "IBM Plex Mono", monospace; font-weight: 700; }
+  .statusline .timer.low { color: var(--danger); }
+  .statusline .phase { font-size: 20px; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--muted); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 10px; border-bottom: 1px solid #1e2733; font-size: 17px; }
+  td.mono, th.r, td.r { text-align: right; }
+  tr.top1 td { color: var(--gold); font-weight: 700; font-size: 20px; }
+  tr.opt td:first-child::after { content: " 🏆"; }
+  .count { color: var(--muted); font-size: 13px; }
+
+  #hist { width: 100%; height: auto; }
+  .hbar { fill: var(--slick); opacity: .85; }
+  .hbar-axis { stroke: var(--line); }
+  .hlabel { fill: var(--muted); font: 600 12px "IBM Plex Mono", monospace; }
+  .hcount { fill: var(--paper); font: 700 13px "IBM Plex Mono", monospace; }
+  .optline { stroke: var(--violet); stroke-width: 3; stroke-dasharray: 6 5; }
+  .optlabel { fill: var(--violet); font: 700 14px "IBM Plex Mono", monospace; }
+
+  .revealbox { border: 1px solid var(--violet); }
+  .qr { text-align: center; }
+  .qr img { border-radius: 12px; background: #fff; padding: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1 class="display">SLICK OIL <span class="drop">ARENA</span> <span class="muted" style="font-size:18px">/ hoca paneli</span></h1>
+    <div class="controls">
+      <div class="seg" id="roundSeg">
+        <button data-r="1">Tur 1</button><button data-r="2">Tur 2</button><button data-r="3">Tur 3</button>
+      </div>
+      <label class="muted">Süre (dk)</label>
+      <input type="number" id="durMin" value="5" min="1" max="30">
+      <button class="primary" id="btnStart">▶ Turu başlat</button>
+      <button id="btnClose">⏹ Kapat</button>
+      <button class="gold" id="btnReveal">✨ Optimali göster</button>
+      <button id="btnLobby">Lobiye al</button>
+      <button class="danger" id="btnWipe">Skorları sıfırla</button>
+    </div>
+  </div>
+
+  <div class="statusline">
+    <div class="timer" id="bigTimer">--:--</div>
+    <div class="phase" id="phaseTxt">durum bekleniyor…</div>
+    <div class="phase" id="scenTxt"></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2 class="display" style="font-size:22px;margin-bottom:8px">Canlı sıralama <span class="count" id="subCount"></span></h2>
+        <table id="lb">
+          <thead><tr><th>#</th><th>İsim</th><th class="r">Maliyet</th><th class="r">Süre</th><th class="r" id="thPts" style="display:none">Puan</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h2 class="display" style="font-size:22px;margin-bottom:8px">Genel klasman <span class="count">(3 turun puan toplamı)</span></h2>
+        <table id="overall">
+          <thead><tr><th>#</th><th>İsim</th><th class="r">T1</th><th class="r">T2</th><th class="r">T3</th><th class="r">Toplam</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2 class="display" style="font-size:22px;margin-bottom:6px">Maliyet dağılımı</h2>
+        <svg id="hist" viewBox="0 0 560 300"></svg>
+      </div>
+      <div class="card revealbox" id="revealCard" style="margin-top:18px;display:none">
+        <h2 class="display violet" style="font-size:22px;margin-bottom:6px">Optimal çözüm — <span class="mono" id="optCostTxt"></span></h2>
+        <p class="muted" id="optNote" style="font-size:14px;margin-bottom:10px"></p>
+        <svg class="network" id="netOpt"></svg>
+      </div>
+      <div class="card qr" style="margin-top:18px">
+        <h2 class="display" style="font-size:20px;margin-bottom:10px">Öğrenci girişi</h2>
+        <img id="qrImg" width="200" height="200" alt="QR">
+        <p class="mono muted" id="joinUrl" style="margin-top:8px;font-size:13px"></p>
+      </div>
+    </div>
+  </div>
+
+  <p class="muted" style="margin-top:26px;font-size:13px">Michael Watson'ın <em>Slick Oil</em> oyunundan uyarlanmıştır (Opex Analytics / LLamasoft; web versiyonu Rémi Lequette).</p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="scenarios.js"></script>
+<script src="network.js"></script>
+<script>
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
+const $ = id => document.getElementById(id);
+
+let uiRound = 1;          // panelde seçili tur
+let state = null;          // rtdb state
+let scoresCache = { r1: {}, r2: {}, r3: {} };
+let timerId = null;
+
+// ---- QR + link
+const joinUrl = location.href.replace(/hoca\.html.*$/, "");
+$("joinUrl").textContent = joinUrl;
+$("qrImg").src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(joinUrl);
+
+// ---- tur seçimi
+document.querySelectorAll("#roundSeg button").forEach(b => {
+  b.addEventListener("click", () => { uiRound = +b.dataset.r; paintSeg(); refreshAll(); });
+});
+function paintSeg() {
+  document.querySelectorAll("#roundSeg button").forEach(b => b.classList.toggle("act", +b.dataset.r === uiRound));
+  $("scenTxt").textContent = SCENARIOS[uiRound].title + " — talep " + SCENARIOS[uiRound].demand + "🛢";
+  $("durMin").value = { 1: 5, 2: 4, 3: 7 }[uiRound];
+}
+paintSeg();
+
+// ---- kontroller
+$("btnStart").onclick = () => {
+  const dur = Math.max(1, +$("durMin").value) * 60;
+  db.ref("state").set({ round: uiRound, phase: "live", duration: dur, endsAt: Date.now() + dur * 1000 });
+};
+$("btnClose").onclick = () => db.ref("state").update({ phase: "closed" });
+$("btnReveal").onclick = () => db.ref("state").update({ phase: "reveal" });
+$("btnLobby").onclick = () => db.ref("state").set({ round: uiRound, phase: "lobby" });
+$("btnWipe").onclick = () => {
+  const what = prompt(`Silinecek: "tur" (sadece Tur ${uiRound}) ya da "hepsi" yaz`, "tur");
+  if (what === "tur") db.ref("scores/r" + uiRound).remove();
+  else if (what === "hepsi") db.ref("scores").remove();
+};
+
+// ---- durum
+db.ref("state").on("value", snap => {
+  state = snap.val();
+  if (state && state.round) { uiRound = state.round; paintSeg(); }
+  $("phaseTxt").textContent = state ? ({ lobby: "LOBİ — öğrenciler bekliyor", live: "TUR CANLI", closed: "TUR KAPALI — ifşa bekleniyor", reveal: "OPTİMAL AÇIKLANDI" })[state.phase] : "durum yok";
+  syncTimer(); refreshAll();
+});
+
+["r1", "r2", "r3"].forEach(k => {
+  db.ref("scores/" + k).on("value", snap => { scoresCache[k] = snap.val() || {}; refreshAll(); });
+});
+
+// ---- her isim için en iyi (min maliyet, eşitlikte erken süre)
+function bestPerName(k) {
+  const best = {};
+  for (const id in scoresCache[k]) {
+    const s = scoresCache[k][id];
+    if (!s || !s.name || typeof s.cost !== "number") continue;
+    const cur = best[s.name];
+    if (!cur || s.cost < cur.cost || (s.cost === cur.cost && s.timeSec < cur.timeSec)) best[s.name] = s;
+  }
+  return Object.values(best).sort((a, b) => a.cost - b.cost || a.timeSec - b.timeSec);
+}
+
+function refreshAll() {
+  const k = "r" + uiRound;
+  const scen = SCENARIOS[uiRound];
+  const rows = bestPerName(k);
+  const revealed = state && state.phase === "reveal";
+  const opt = scen.optimal.cost;
+
+  // liderlik tablosu
+  $("subCount").textContent = `(${Object.keys(scoresCache[k]).length} teslim, ${rows.length} oyuncu)`;
+  $("thPts").style.display = revealed ? "" : "none";
+  const tb = $("lb").querySelector("tbody");
+  tb.innerHTML = "";
+  rows.slice(0, 15).forEach((s, i) => {
+    const tr = document.createElement("tr");
+    if (i === 0) tr.classList.add("top1");
+    if (revealed && Math.abs(s.cost - opt) < 1e-6) tr.classList.add("opt");
+    tr.innerHTML = `<td>${i + 1}</td><td>${esc(s.name)}</td>` +
+      `<td class="r mono">${fmtMoney(s.cost)}</td>` +
+      `<td class="r mono muted">${fmtT(s.timeSec)}</td>` +
+      (revealed ? `<td class="r mono violet">${Math.round(1000 * opt / s.cost)}</td>` : "");
+    tb.appendChild(tr);
+  });
+
+  // histogram
+  drawHist(rows.map(r => r.cost), revealed ? opt : null);
+
+  // ifşa kartı
+  $("revealCard").style.display = revealed ? "" : "none";
+  if (revealed) {
+    $("optCostTxt").textContent = fmtMoney(opt);
+    $("optNote").textContent = scen.optimal.note;
+    renderNetwork($("netOpt"), scen, optimalFlowArray(scen), null, null);
+    $("netOpt").querySelectorAll(".pipe-on").forEach(p => p.classList.add("pipe-opt"));
+    $("netOpt").querySelectorAll(".flowtag").forEach(p => p.classList.add("flowtag-opt"));
+  }
+
+  // genel klasman
+  drawOverall();
+}
+
+function drawOverall() {
+  const pts = {};
+  [1, 2, 3].forEach(r => {
+    const opt = SCENARIOS[r].optimal.cost;
+    for (const s of bestPerName("r" + r)) {
+      pts[s.name] = pts[s.name] || { t1: 0, t2: 0, t3: 0 };
+      pts[s.name]["t" + r] = Math.round(1000 * opt / s.cost);
+    }
+  });
+  const rows = Object.entries(pts)
+    .map(([name, p]) => ({ name, ...p, tot: p.t1 + p.t2 + p.t3 }))
+    .sort((a, b) => b.tot - a.tot);
+  const tb = $("overall").querySelector("tbody");
+  tb.innerHTML = "";
+  rows.slice(0, 12).forEach((r, i) => {
+    const tr = document.createElement("tr");
+    if (i === 0) tr.classList.add("top1");
+    tr.innerHTML = `<td>${i + 1}</td><td>${esc(r.name)}</td>` +
+      `<td class="r mono">${r.t1 || "—"}</td><td class="r mono">${r.t2 || "—"}</td><td class="r mono">${r.t3 || "—"}</td>` +
+      `<td class="r mono gold">${r.tot}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ---- histogram
+function drawHist(costs, optCost) {
+  const svg = $("hist");
+  svg.innerHTML = "";
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const q in a) e.setAttribute(q, a[q]); svg.appendChild(e); return e; };
+  const W = 560, H = 300, padL = 16, padB = 34, padT = 18;
+  el("line", { x1: padL, y1: H - padB, x2: W - 10, y2: H - padB, class: "hbar-axis" });
+  if (!costs.length) {
+    const t = el("text", { x: W / 2, y: H / 2, class: "hlabel", "text-anchor": "middle" });
+    t.textContent = "henüz teslim yok"; return;
+  }
+  let lo = Math.min(...costs), hi = Math.max(...costs);
+  if (optCost != null) lo = Math.min(lo, optCost);
+  if (hi === lo) hi = lo + 1;
+  const span = hi - lo, binW = Math.max(10, Math.ceil(span / 9 / 10) * 10);
+  const b0 = Math.floor(lo / binW) * binW;
+  const nBins = Math.max(1, Math.ceil((hi - b0 + 1) / binW));
+  const bins = new Array(nBins).fill(0);
+  costs.forEach(c => bins[Math.min(nBins - 1, Math.floor((c - b0) / binW))]++);
+  const maxN = Math.max(...bins);
+  const bw = (W - padL - 20) / nBins;
+  const x = v => padL + (v - b0) / (nBins * binW) * (W - padL - 20);
+  bins.forEach((n, i) => {
+    if (!n) return;
+    const h = (H - padB - padT) * n / maxN;
+    el("rect", { x: padL + i * bw + 2, y: H - padB - h, width: bw - 4, height: h, rx: 4, class: "hbar" });
+    const t = el("text", { x: padL + i * bw + bw / 2, y: H - padB - h - 6, class: "hcount", "text-anchor": "middle" });
+    t.textContent = n;
+  });
+  for (let i = 0; i <= nBins; i += Math.ceil(nBins / 6)) {
+    const t = el("text", { x: padL + i * bw, y: H - padB + 18, class: "hlabel", "text-anchor": "middle" });
+    t.textContent = "$" + (b0 + i * binW);
+  }
+  if (optCost != null) {
+    const ox = x(optCost);
+    el("line", { x1: ox, y1: padT - 6, x2: ox, y2: H - padB, class: "optline" });
+    const t = el("text", { x: Math.min(ox + 6, W - 120), y: padT + 6, class: "optlabel" });
+    t.textContent = "OPTİMAL " + fmtMoney(optCost);
+  }
+}
+
+// ---- zamanlayıcı
+function syncTimer() {
+  clearInterval(timerId);
+  const el2 = $("bigTimer");
+  if (!state || state.phase !== "live" || !state.endsAt) { el2.textContent = "--:--"; el2.classList.remove("low"); return; }
+  const tick = () => {
+    const left = Math.max(0, Math.round((state.endsAt - Date.now()) / 1000));
+    el2.textContent = String(Math.floor(left / 60)).padStart(2, "0") + ":" + String(left % 60).padStart(2, "0");
+    el2.classList.toggle("low", left <= 30 && left > 0);
+    if (left <= 0) { clearInterval(timerId); db.ref("state").update({ phase: "closed" }); }
+  };
+  tick(); timerId = setInterval(tick, 500);
+}
+
+function esc(s) { return String(s).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c])); }
+function fmtT(t) { return t == null ? "—" : t.toFixed(0) + "sn"; }
+</script>
+</body>
+</html>
