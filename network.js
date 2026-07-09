@@ -13,15 +13,18 @@
 // (mono ≈ 0.6em/karakter, emoji ≈ 1.15em) geniş geometride ~92, kompaktta ~106
 // birim tutar. Kuyu düğümünde etikete kalan yer = nodeW - badgeInset - badgeR
 // - labelPadWell. Punto veya etiket biçimi değişirse bu hesabı yeniden yapın.
+// rowGap: iki düğüm merkezi arası dikey adım. padTop: sütun başlıklarına ayrılan üst
+// pay. padBot: en alttaki düğümün doluluk çubuğu için alt pay.
+// Toplam yükseklik = satır sayısı × rowGap + padTop + padBot.
 const NET_WIDE = {
   W: 760, nodeW: 136, nodeH: 46, wellX: 40, refX: 420, custX: 640,
-  custW: 112, custH: 60, rowGap: 92, padY: 120, badgeR: 14, badgeInset: 16,
+  custW: 112, custH: 60, rowGap: 74, padTop: 64, padBot: 48, badgeR: 14, badgeInset: 16,
   labelPadWell: 12, labelPadRef: 36, tagW: 48, tagH: 24, tagDy: 4,
   custTagW: 44, custTagH: 22, custTagDy: 4, pipeBase: 3, pipeGain: 18
 };
 const NET_COMPACT = {
   W: 660, nodeW: 156, nodeH: 52, wellX: 4, refX: 268, custX: 512,
-  custW: 136, custH: 68, rowGap: 100, padY: 120, badgeR: 16, badgeInset: 18,
+  custW: 136, custH: 68, rowGap: 88, padTop: 66, padBot: 54, badgeR: 16, badgeInset: 18,
   labelPadWell: 12, labelPadRef: 40, tagW: 56, tagH: 30, tagDy: 6,
   custTagW: 50, custTagH: 26, custTagDy: 5, pipeBase: 4, pipeGain: 16
 };
@@ -38,13 +41,15 @@ function netGeometry(svgEl) {
 
 function netHeight(scen, g) {
   const rows = Math.max(scen.wells.length, scen.refs.length);
-  return rows * g.rowGap + g.padY;
+  return rows * g.rowGap + g.padTop + g.padBot;
 }
 
-function nodeY(i, count, H) {
-  const span = H - 140;
-  const dy = count > 1 ? span / (count - 1) : 0;
-  return 80 + i * dy;
+// Bir sütundaki i. düğümün MERKEZ y'si. Sütunlar farklı sayıda düğüm içerebilir
+// (10 kuyu × 8 rafineri), bu yüzden her sütun kendi aralığına yayılır.
+function nodeY(i, count, H, g) {
+  const usable = H - g.padTop - g.padBot - g.nodeH;
+  const dy = count > 1 ? usable / (count - 1) : 0;
+  return g.padTop + g.nodeH / 2 + i * dy;
 }
 
 // Akış etiketi için hat üzerindeki aday konumlar (hattın t oranındaki noktası).
@@ -114,7 +119,7 @@ function renderNetwork(svgEl, scen, flows, selectedLink, onTap) {
   };
 
   const nW = scen.wells.length, nR = scen.refs.length;
-  const wy = i => nodeY(i, nW, H), ry = i => nodeY(i, nR, H);
+  const wy = i => nodeY(i, nW, H, g), ry = i => nodeY(i, nR, H, g);
   const custY = H / 2;
 
   // ---- rafineri → müşteri hatları (altta kalsın)
@@ -171,7 +176,7 @@ function renderNetwork(svgEl, scen, flows, selectedLink, onTap) {
     txt(bx, y + 5, name, "node-name", "middle").setAttribute("pointer-events", "none");
     // maliyet | kapasite
     const lx = kind === "well" ? x + g.labelPadWell : x + g.labelPadRef;
-    txt(lx, y + 5, broken ? "ARIZA" : `$${cost} | ${cap}🛢`, "node-label" + (broken ? " node-label-broken" : ""));
+    txt(lx, y + 5, broken ? t("net.broken") : `$${cost} | ${cap}🛢`, "node-label" + (broken ? " node-label-broken" : ""));
     // doluluk çubuğu
     el("rect", { x, y: y + g.nodeH / 2 + 4, width: g.nodeW, height: 6, rx: 3, class: "cap-track" }, grp);
     if (cap > 0) {
@@ -188,13 +193,13 @@ function renderNetwork(svgEl, scen, flows, selectedLink, onTap) {
   const overD = ev.delivered > scen.demand;
   const cg = el("g", { class: "node" });
   el("rect", { x: g.custX, y: custY - g.custH / 2, width: g.custW, height: g.custH, rx: 12, class: "cust-box" + (done ? " cust-done" : overD ? " cust-over" : "") }, cg);
-  txt(g.custX + g.custW / 2, custY - 6, "MÜŞTERİ", "cust-title", "middle");
+  txt(g.custX + g.custW / 2, custY - 6, t("net.customer"), "cust-title", "middle");
   txt(g.custX + g.custW / 2, custY + 18, `${ev.delivered} / ${scen.demand}🛢`, "cust-demand", "middle");
   el("rect", { x: g.custX, y: custY + g.custH / 2 + 6, width: g.custW, height: 6, rx: 3, class: "cap-track" }, cg);
   el("rect", { x: g.custX, y: custY + g.custH / 2 + 6, width: g.custW * Math.min(ev.delivered, scen.demand) / scen.demand, height: 6, rx: 3, class: "cap-fill cap-cust" }, cg);
 
   // sütun başlıkları
-  txt(g.wellX, 34, "KUYULAR", "col-title");
-  txt(g.refX, 34, "RAFİNERİLER", "col-title");
+  txt(g.wellX, 34, t("net.wells"), "col-title");
+  txt(g.refX, 34, t("net.refs"), "col-title");
   return ev;
 }

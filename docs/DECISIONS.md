@@ -64,3 +64,46 @@ tutarlılığını koruyan bir doğrulama scripti (`tools/verify-scenarios.mjs`)
 ama optimumu **yeniden hesaplamaz**; yalnızca beyan edilen çözümün hâlâ uygulanabilir
 olduğunu ve beyan edilen maliyeti verdiğini kontrol eder. Senaryo değişirse LP yeniden
 çözülmelidir.
+
+---
+
+## ADR-004 — İki dillilik: sözlük tabanlı, çerçevesiz
+
+**Tarih:** 2026-07-10
+**Durum:** Kabul edildi
+
+**Bağlam:** Ders hem Türkçe hem İngilizce verilebiliyor; arayüzün tamamı (senaryo
+hikâyeleri ve ağ etiketleri dahil) iki dilde gerekiyor. Site build'siz kalmalı.
+
+**Değerlendirilen seçenekler:**
+- i18next / Polyglot gibi bir kütüphane — Artı: çoğullama, biçimlendirme hazır. Eksi: yeni bağımlılık, CDN çağrısı; bu projede çoğullama gereği yok.
+- Her dil için ayrı HTML dosyası (`index.en.html`) — Artı: sıfır JS. Eksi: her düzeltme iki dosyada; DRY ihlali, sürüklenme kaçınılmaz.
+- Tek sözlük + `data-i18n` işaretleri + `t()` — Artı: bağımlılık yok, tek gerçek kaynak, metinler makineyle denetlenebilir. Eksi: dinamik metinlerde `t()` çağrısı unutulabilir.
+
+**Karar:** Tek sözlük (`i18n.js`). "Unutulan `t()`" riskini denetimle karşılıyoruz:
+iki sözlüğün anahtar kümeleri eşit mi, kullanılan her anahtar tanımlı mı, ölü metin
+var mı, `{değişken}` isimleri iki dilde tutuyor mu — hepsi kontrol edilebilir.
+
+**Sonuçları:** Yeni metin iki sözlüğe de eklenmeli. Senaryo metinleri `title` /
+`title_en` çiftleri olarak yaşar; üçüncü bir dil eklenirse bu şema (`title_xx`)
+sözlük yapısına (`title: {tr, en}`) dönüştürülmelidir.
+
+---
+
+## ADR-005 — Optimal maliyet katlanmış başlıkta gösterilmez
+
+**Tarih:** 2026-07-10
+**Durum:** Kabul edildi
+
+**Bağlam:** Hoca paneli projeksiyondadır. Optimal çözüm bölümünün başlığı
+"Optimal çözüm — $690" yazıyordu; bölüm kapalıyken bile bu satır perdede okunuyordu,
+yani ifşadan önce cevabı sızdırıyordu. Oyunun tüm dramatik yapısı bu sayının
+saklanmasına dayanır.
+
+**Karar:** Başlık yalnızca "Optimal çözüm" der. Maliyet, bölüm açıldığında gövdede
+büyük puntoyla belirir. Ayrıca bölüm, `state.phase === "reveal"` olana dek hiç
+görünmez.
+
+**Consequences / Sonuçları:** "✨ Optimali göster" düğmesi kaldırılmadı — o düğme
+paneli değil, **öğrenci telefonlarındaki** ifşa fazını tetikler. Ne yaptığı belirsiz
+kalmasın diye adı "Optimali sınıfa aç" (EN: "Reveal to class") oldu.

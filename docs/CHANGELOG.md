@@ -1,5 +1,36 @@
 # Changelog
 
+## [2026-07-10] — İki dillilik (TR/EN) ve panel düzeltmeleri
+
+**Ne değişti:** Tüm arayüz iki dilli oldu. `i18n.js` sözlüğü, `data-i18n` işaretli statik
+metinleri ve `t()` ile üretilen dinamik metinleri kapsıyor; senaryo başlıkları, hikâyeleri
+ve optimal notları da çevrildi. Dil düğmesi her iki sayfada; seçim tarayıcıda saklanıyor,
+ilk açılışta tarayıcı diline bakılıyor. Hoca panelinde: senaryo ağının yüksekliği
+sınırlandı, optimal maliyet artık katlanmış bölüm **başlığında görünmüyor** (yalnızca bölüm
+açılınca gövdede), ve "Optimali göster" düğmesi "Optimali sınıfa aç" olarak yeniden
+adlandırıldı.
+
+**Neden:** Optimal maliyet, bölüm kapalıyken bile projeksiyonda okunuyordu — ifşadan önce
+öğrenciye sızıyordu. Senaryo alanı ekrana sığmıyordu.
+
+**Ağ yüksekliği:** `rowGap` 92 → 74 ve `padY` ayrı `padTop`/`padBot`'a bölündü; çizim
+%17–18 kısaldı. Düğüm boyutları ve yazı puntoları **değişmedi** — yalnızca satır arası
+boşluk azaldı. (Önce CSS `max-height` denenmişti; o, SVG'yi bütünüyle küçülterek
+okunaksız hale getiriyordu.)
+
+**Etkisi:** `fmtMoney` binlik ayıracını dile göre seçiyor ($1.245 / $1,245). Oyun mantığı,
+senaryo sayıları, optimal çözümler ve puanlama formülü değişmedi.
+
+**Düzeltilen hata:** "Skorları sıfırla → hepsi" hiçbir şey silmiyordu. Güvenlik kuralları
+yazma iznini `scores/$round` seviyesinde verir, `scores` kökünde değil; `db.ref("scores").remove()`
+401 dönüyordu ve `.catch()` olmadığı için hata sessizce yutuluyordu. Artık turlar tek tek
+siliniyor ve başarısızlık kullanıcıya bildiriliyor.
+
+**Dahil edilmedi:** "Optimali sınıfa aç" düğmesinin kaldırılması. Bu düğme yalnızca paneli
+değil, `state.phase`'i `reveal` yaparak **öğrenci telefonlarındaki sonuç ekranını** da
+açar; kaldırılsaydı öğrenciler optimumu hiç görmezdi. Bunun yerine adı, ne yaptığını
+anlatacak biçimde değiştirildi.
+
 ## [2026-07-10] — Hoca paneli yeniden düzenlendi, telefonda okunabilir ağ
 
 **Ne değişti:** Hoca paneli dört katlanabilir satıra ayrıldı (QR / senaryo / sıralama +

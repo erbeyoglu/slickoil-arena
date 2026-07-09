@@ -69,40 +69,45 @@
   .bigstat { font-size: 46px; font-weight: 700; font-family: "IBM Plex Mono", monospace; }
   .badge { display: inline-block; background: var(--panel2); border: 1px solid var(--gold); color: var(--gold); border-radius: 999px; padding: 6px 16px; font-weight: 700; margin-top: 10px; }
   .badge.opt { border-color: var(--violet); color: var(--violet); }
+
+  /* dil değiştirici */
+  #langBtn { position: fixed; top: 10px; right: 10px; z-index: 40; padding: 6px 12px; font-size: 13px; font-weight: 700; opacity: .85; }
+  header.hud ~ #langBtn { top: 14px; }
 </style>
 </head>
 <body>
+<button id="langBtn" type="button">EN</button>
 <div class="wrap">
 
   <!-- HUD -->
   <header class="hud" id="hud" style="display:none">
-    <div class="hud-box"><div class="k" id="hudRoundK">Tur</div><div class="v display" id="hudRound">—</div></div>
-    <div class="hud-box" id="hudTimer"><div class="k">Süre</div><div class="v" id="hudTimeV">--:--</div></div>
-    <div class="hud-box" id="hudCost"><div class="k">Maliyet</div><div class="v" id="hudCostV">$0</div></div>
+    <div class="hud-box"><div class="k" data-i18n="hud.round">Tur</div><div class="v display" id="hudRound">—</div></div>
+    <div class="hud-box" id="hudTimer"><div class="k" data-i18n="hud.time">Süre</div><div class="v" id="hudTimeV">--:--</div></div>
+    <div class="hud-box" id="hudCost"><div class="k" data-i18n="hud.cost">Maliyet</div><div class="v" id="hudCostV">$0</div></div>
   </header>
 
   <!-- GİRİŞ -->
   <section class="screen on" id="sJoin">
     <h1 class="display">SLICK OIL <span class="drop">ARENA</span></h1>
-    <p class="sub">100 varil. En düşük maliyet. Sınıfın en iyisi kim?</p>
+    <p class="sub" data-i18n="join.sub"></p>
     <form id="joinForm">
-      <label class="muted" for="nameInput">Takma adın (leaderboard'da görünecek)</label>
-      <input type="text" id="nameInput" maxlength="18" placeholder="örn. simpleks_kral" autocomplete="off" required>
-      <button class="primary" type="submit">Oyuna katıl</button>
+      <label class="muted" for="nameInput" data-i18n="join.nameLabel"></label>
+      <input type="text" id="nameInput" maxlength="18" data-i18n-ph="join.namePlaceholder" autocomplete="off" required>
+      <button class="primary" type="submit" data-i18n="join.cta"></button>
     </form>
-    <p class="muted" style="margin-top:28px;font-size:13px">Michael Watson'ın <em>Slick Oil</em> oyunundan uyarlanmıştır<br>(Opex Analytics / LLamasoft — web: Rémi Lequette)</p>
+    <p class="muted" style="margin-top:28px;font-size:13px" data-i18n-html="credit.join"></p>
   </section>
 
   <!-- LOBİ -->
   <section class="screen" id="sLobby">
-    <h2 class="display" style="font-size:30px"><span class="pulse"></span>Bekleme odası</h2>
-    <p class="muted" style="margin-top:10px">Hoca turu başlattığında oyun burada otomatik açılacak.<br>Telefonu kapatma, <span class="slick" id="lobbyName"></span>.</p>
+    <h2 class="display" style="font-size:30px"><span class="pulse"></span><span data-i18n="lobby.h"></span></h2>
+    <p class="muted" style="margin-top:10px"><span data-i18n="lobby.p1"></span><br><span data-i18n="lobby.p2"></span> <span class="slick" id="lobbyName"></span>.</p>
   </section>
 
   <!-- OYUN -->
   <section class="screen" id="sGame">
     <div class="story" id="storyBox"></div>
-    <p class="muted" style="font-size:13px;margin-bottom:8px">Boruya dokun → akışı ayarla. Birim maliyet = kuyu + rafineri maliyeti.</p>
+    <p class="muted" style="font-size:13px;margin-bottom:8px" data-i18n="game.hint"></p>
     <svg class="network" id="net"></svg>
   </section>
 
@@ -130,7 +135,7 @@
 
 <!-- gönder çubuğu -->
 <div id="submitBar" style="display:none">
-  <button class="gold" id="submitBtn" disabled>Teslim et</button>
+  <button class="gold" id="submitBtn" disabled></button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -138,6 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="i18n.js"></script>
 <script src="scenarios.js"></script>
 <script src="network.js"></script>
 <script>
@@ -204,7 +210,7 @@ function route() {
       flows = scen.links.map(() => 0); flows._round = s.round; selected = null;
     }
     if (!flows._round || flows._round !== s.round) { flows = scen.links.map(() => 0); flows._round = s.round; selected = null; }
-    $("storyBox").innerHTML = `<strong class="display">${scen.title}</strong><br>${scen.story}`;
+    $("storyBox").innerHTML = `<strong class="display">${scenTitle(scen)}</strong><br>${scenStory(scen)}`;
     show("sGame");
     $("submitBar").style.display = "flex";
     redraw();
@@ -222,8 +228,8 @@ function redraw() {
   const ok = ev.delivered === scen.demand && ev.feasible;
   btn.disabled = !ok;
   btn.textContent = ok
-    ? (submittedBest[scen.key] != null ? "Daha iyisini teslim et — " + fmtMoney(ev.cost) : "Teslim et — " + fmtMoney(ev.cost))
-    : `Teslim (${ev.delivered}/${scen.demand}🛢)`;
+    ? t(submittedBest[scen.key] != null ? "submit.better" : "submit.ok", { cost: fmtMoney(ev.cost) })
+    : t("submit.incomplete", { delivered: ev.delivered, demand: scen.demand });
   return ev;
 }
 
@@ -233,8 +239,8 @@ function onPipeTap(i) {
   redraw();
   if (selected == null) { hidePipeBar(); return; }
   const [w, r] = scen.links[selected];
-  $("pipeTitle").textContent = `Kuyu ${scen.wells[w].name} → Rafineri ${scen.refs[r].name}`;
-  $("pipeCost").textContent = "$" + unitCost(scen, selected) + "/varil";
+  $("pipeTitle").textContent = `${t("net.well")} ${scen.wells[w].name} → ${t("net.ref")} ${scen.refs[r].name}`;
+  $("pipeCost").textContent = "$" + unitCost(scen, selected) + t("pipe.perBarrel");
   $("pipeFlowV").textContent = flows[selected];
   $("pipeBar").classList.add("on");
 }
@@ -250,7 +256,7 @@ function bump(delta) {
   if (delta > 0 && headroom(scen, flows, selected) < delta) {
     $("pipeBar").classList.remove("shake"); void $("pipeBar").offsetWidth;
     $("pipeBar").classList.add("shake");
-    toast("Kapasite ya da talep sınırı — bu boruya daha fazla sığmaz", true);
+    toast(t("toast.capacity"), true);
     return;
   }
   setFlow(selected, flows[selected] + delta);
@@ -281,11 +287,11 @@ window.addEventListener("resize", () => {
 // ---- teslim
 $("submitBtn").addEventListener("click", () => {
   const s = gState();
-  if (!s || s.phase !== "live") { toast("Tur kapalı", true); return; }
+  if (!s || s.phase !== "live") { toast(t("toast.closed"), true); return; }
   const ev = evaluate(scen, flows);
-  if (!ev.feasible) { toast("Çözüm geçerli değil", true); return; }
+  if (!ev.feasible) { toast(t("toast.invalid"), true); return; }
   const prev = submittedBest[scen.key];
-  if (prev != null && ev.cost >= prev) { toast(`Önceki teslimin daha iyiydi (${fmtMoney(prev)})`, true); return; }
+  if (prev != null && ev.cost >= prev) { toast(t("toast.worse", { cost: fmtMoney(prev) }), true); return; }
   const startAt = s.endsAt - (s.duration || 300) * 1000;
   const timeSec = Math.max(0, Math.round((Date.now() - startAt) / 10) / 100);
   db.ref("scores/" + scen.key).push({
@@ -293,32 +299,32 @@ $("submitBtn").addEventListener("click", () => {
     ts: firebase.database.ServerValue.TIMESTAMP
   }).then(() => {
     submittedBest[scen.key] = ev.cost; saveBest();
-    toast(`Teslim edildi: ${fmtMoney(ev.cost)} — daha iyisini bulursan tekrar gönderebilirsin ✓`);
-  }).catch(() => toast("Gönderilemedi — bağlantıyı kontrol et", true));
+    toast(t("toast.sent", { cost: fmtMoney(ev.cost) }));
+  }).catch(() => toast(t("toast.failed"), true));
 });
 
 // ---- sonuç / ifşa ekranı
 function showResult(s) {
   const mine = submittedBest[scen.key];
-  let html = `<h2 class="display" style="font-size:30px">${scen.title} bitti</h2>`;
+  let html = `<h2 class="display" style="font-size:30px">${t("result.over", { title: scenTitle(scen) })}</h2>`;
   if (mine != null) {
-    html += `<p class="muted" style="margin-top:8px">Senin en iyi maliyetin</p><div class="bigstat gold">${fmtMoney(mine)}</div>`;
+    html += `<p class="muted" style="margin-top:8px">${t("result.yourBest")}</p><div class="bigstat gold">${fmtMoney(mine)}</div>`;
   } else {
-    html += `<p class="muted" style="margin-top:12px">Bu turda geçerli bir teslimin olmadı.</p>`;
+    html += `<p class="muted" style="margin-top:12px">${t("result.none")}</p>`;
   }
   if (s.phase === "reveal") {
     const opt = scen.optimal.cost;
-    html += `<p class="muted" style="margin-top:18px">Optimal maliyet (LP çözücü, ~1 ms)</p><div class="bigstat violet">${fmtMoney(opt)}</div>`;
+    html += `<p class="muted" style="margin-top:18px">${t("result.optCost")}</p><div class="bigstat violet">${fmtMoney(opt)}</div>`;
     if (mine != null) {
       const gap = 100 * (mine - opt) / opt;
-      if (gap < 0.01) html += `<div class="badge opt">🏆 OPTIMAL! Simpleks beyni</div>`;
-      else html += `<div class="badge">Optimuma uzaklık: %${gap.toFixed(1)}</div>`;
-      html += `<p class="muted" style="margin-top:14px;font-size:14px">Puanın: <strong class="mono">${Math.round(1000 * opt / mine)}</strong> / 1000</p>`;
+      if (gap < 0.01) html += `<div class="badge opt">${t("result.badgeOpt")}</div>`;
+      else html += `<div class="badge">${t("result.gap", { gap: gap.toFixed(1) })}</div>`;
+      html += `<p class="muted" style="margin-top:14px;font-size:14px">${t("result.points", { points: Math.round(1000 * opt / mine) })}</p>`;
     }
-    html += `<p class="muted" style="max-width:520px;margin:20px auto 0;font-size:14px">${scen.optimal.note}</p>`;
+    html += `<p class="muted" style="max-width:520px;margin:20px auto 0;font-size:14px">${scenNote(scen)}</p>`;
     html += `<div style="margin-top:20px"><svg class="network" id="netOpt"></svg></div>`;
   } else {
-    html += `<p class="muted" style="margin-top:20px">Gözler perdeye — sonuçlar açıklanıyor…</p>`;
+    html += `<p class="muted" style="margin-top:20px">${t("result.waiting")}</p>`;
   }
   $("resultInner").innerHTML = html;
   show("sResult");
@@ -329,6 +335,16 @@ function showResult(s) {
     $("netOpt").querySelectorAll(".flowtag").forEach(p => p.classList.add("flowtag-opt"));
   }
 }
+
+// ---- dil
+// Statik metinleri applyI18n halleder; dinamik olanlar (hikâye, ağ etiketleri,
+// sonuç ekranı, teslim butonu) route() ile yeniden üretilir.
+initLangToggle("langBtn", () => {
+  document.title = t("doc.title.student");
+  hidePipeBar();
+  route();
+});
+document.title = t("doc.title.student");
 
 // ---- zamanlayıcı
 function syncTimer() {

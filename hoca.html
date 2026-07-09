@@ -41,8 +41,14 @@
   .pipectl button { padding: 8px 14px; }
   .pipectl.shake { animation: shake .3s; }
   @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-  /* geniş projeksiyonda ağ sayfayı ele geçirmesin */
+
+  /* WHY: max-height vermiyoruz — SVG içeriği viewBox oranını koruyarak küçülür ve
+     çizim okunmaz hale gelir. Yükseklik, network.js'teki satır aralığı (rowGap) ve
+     üst/alt paylarla (padTop/padBot) kontrol edilir. */
   #netScen, #netOpt { max-width: 900px; margin: 0 auto; }
+
+  .bigopt { font-size: 40px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+  #langBtn { font-weight: 700; min-width: 46px; }
 
   /* satır 3: sıralamalar solda, histogram sağda */
   .boardgrid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; align-items: start; }
@@ -78,52 +84,53 @@
 <div class="wrap">
 
   <div class="topbar">
-    <h1 class="display">SLICK OIL <span class="drop">ARENA</span> <span class="muted" style="font-size:18px">/ hoca paneli</span></h1>
+    <h1 class="display">SLICK OIL <span class="drop">ARENA</span> <span class="muted" style="font-size:18px" data-i18n="panel.subtitle"></span></h1>
     <div class="controls">
       <div class="seg" id="roundSeg">
-        <button data-r="1">Tur 1</button><button data-r="2">Tur 2</button><button data-r="3">Tur 3</button>
+        <button data-r="1" data-i18n="ctrl.round1"></button><button data-r="2" data-i18n="ctrl.round2"></button><button data-r="3" data-i18n="ctrl.round3"></button>
       </div>
-      <label class="muted">Süre (dk)</label>
+      <label class="muted" data-i18n="ctrl.duration"></label>
       <input type="number" id="durMin" value="5" min="1" max="30">
-      <button class="primary" id="btnStart">▶ Turu başlat</button>
-      <button id="btnClose">⏹ Kapat</button>
-      <button class="gold" id="btnReveal">✨ Optimali göster</button>
-      <button id="btnLobby">Lobiye al</button>
-      <button class="danger" id="btnWipe">Skorları sıfırla</button>
+      <button class="primary" id="btnStart" data-i18n="ctrl.start"></button>
+      <button id="btnClose" data-i18n="ctrl.close"></button>
+      <button class="gold" id="btnReveal" data-i18n="ctrl.reveal"></button>
+      <button id="btnLobby" data-i18n="ctrl.lobby"></button>
+      <button class="danger" id="btnWipe" data-i18n="ctrl.wipe"></button>
+      <button id="langBtn" type="button">EN</button>
     </div>
   </div>
 
   <div class="statusline">
     <div class="timer" id="bigTimer">--:--</div>
-    <div class="phase" id="phaseTxt">durum bekleniyor…</div>
+    <div class="phase" id="phaseTxt"></div>
     <div class="phase" id="scenTxt"></div>
   </div>
 
   <!-- 1 — QR / öğrenci girişi -->
   <details class="card sect" id="sectQr" open>
-    <summary>Öğrenci girişi <span class="hint">QR'ı perdeye yansıtın</span></summary>
+    <summary><span data-i18n="sect.qr"></span> <span class="hint" data-i18n="sect.qrHint"></span></summary>
     <div class="sect-body qrrow">
-      <img id="qrImg" width="220" height="220" alt="Öğrenci giriş adresinin QR kodu">
+      <img id="qrImg" width="220" height="220" data-i18n-alt="qr.alt" alt="">
       <div>
-        <p class="muted" style="margin-bottom:6px">Telefonla okutun ya da adresi yazın:</p>
+        <p class="muted" style="margin-bottom:6px" data-i18n="sect.qrLead"></p>
         <p class="mono slick joinbig" id="joinUrl"></p>
       </div>
     </div>
   </details>
 
-  <!-- 2 — senaryo: hikâye + ağ -->
+  <!-- 2 — senaryo: hikâye + oynanabilir ağ -->
   <details class="card sect" id="sectScen" open>
-    <summary>Senaryo — deneme alanı <span class="hint" id="scenHint"></span></summary>
+    <summary><span data-i18n="sect.scen"></span> <span class="hint" id="scenHint"></span></summary>
     <div class="sect-body scenrow">
       <div class="story" id="scenStory"></div>
 
       <div class="playbar">
         <div class="readout">
-          <span class="k">Teslimat</span><span class="v mono" id="scenDelivered">—</span>
-          <span class="k">Maliyet</span><span class="v mono gold" id="scenCost">$0</span>
-          <span class="v" id="scenStatus"></span>
+          <span class="k" data-i18n="play.delivered"></span><span class="v mono" id="scenDelivered">—</span>
+          <span class="k" data-i18n="play.cost"></span><span class="v mono gold" id="scenCost">$0</span>
+          <span class="v slick" id="scenStatus"></span>
         </div>
-        <button id="scenReset">Sıfırla</button>
+        <button id="scenReset" data-i18n="play.reset"></button>
       </div>
 
       <div class="pipectl" id="scenCtl" hidden>
@@ -135,7 +142,7 @@
         <button id="scenPlus">+10</button>
         <button id="scenMax">MAX</button>
       </div>
-      <p class="muted" id="scenHelp" style="font-size:14px;margin:8px 0 12px">Boruya tıklayın → akışı ayarlayın. Bu alan yalnızca sizin denemeniz içindir; skorlara işlemez.</p>
+      <p class="muted" style="font-size:14px;margin:8px 0 12px" data-i18n="play.help"></p>
 
       <svg class="network" id="netScen"></svg>
     </div>
@@ -143,46 +150,51 @@
 
   <!-- 3 — sıralamalar + histogram -->
   <details class="card sect" id="sectBoard" open>
-    <summary>Sıralama ve dağılım <span class="hint" id="subCount"></span></summary>
+    <summary><span data-i18n="sect.board"></span> <span class="hint" id="subCount"></span></summary>
     <div class="sect-body boardgrid">
       <div>
         <div class="block">
-          <h3 class="display">Canlı sıralama</h3>
+          <h3 class="display" data-i18n="board.live"></h3>
           <table id="lb">
-            <thead><tr><th>#</th><th>İsim</th><th class="r">Maliyet</th><th class="r">Süre</th><th class="r" id="thPts" style="display:none">Puan</th></tr></thead>
+            <thead><tr><th data-i18n="th.rank"></th><th data-i18n="th.name"></th><th class="r" data-i18n="th.cost"></th><th class="r" data-i18n="th.time"></th><th class="r" id="thPts" style="display:none" data-i18n="th.points"></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
         <div class="block">
-          <h3 class="display">Genel klasman <span class="count">(3 turun puan toplamı)</span></h3>
+          <h3 class="display"><span data-i18n="board.overall"></span> <span class="count" data-i18n="board.overallHint"></span></h3>
           <table id="overall">
-            <thead><tr><th>#</th><th>İsim</th><th class="r">T1</th><th class="r">T2</th><th class="r">T3</th><th class="r">Toplam</th></tr></thead>
+            <thead><tr><th data-i18n="th.rank"></th><th data-i18n="th.name"></th><th class="r">T1</th><th class="r">T2</th><th class="r">T3</th><th class="r" data-i18n="th.total"></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
       </div>
       <div>
-        <h3 class="display">Maliyet dağılımı</h3>
+        <h3 class="display" data-i18n="board.hist"></h3>
         <svg id="hist" viewBox="0 0 560 300"></svg>
       </div>
     </div>
   </details>
 
-  <!-- 4 — optimal ifşası -->
+  <!-- 4 — optimal ifşası
+       Başlıkta maliyet YAZMAZ: bölüm kapalıyken bile perdede görünürdü.
+       Maliyet yalnızca bölüm açıldığında, gövdede belirir. -->
   <details class="card sect revealbox" id="sectOpt" style="display:none">
-    <summary class="violet">Optimal çözüm — <span class="mono" id="optCostTxt"></span></summary>
+    <summary class="violet" data-i18n="sect.opt"></summary>
     <div class="sect-body">
-      <p class="muted" id="optNote" style="font-size:15px;margin-bottom:12px"></p>
+      <p class="muted" style="margin-bottom:4px"><span data-i18n="opt.costLabel"></span></p>
+      <div class="bigopt violet mono" id="optCostTxt"></div>
+      <p class="muted" id="optNote" style="font-size:15px;margin:10px 0 12px"></p>
       <svg class="network" id="netOpt"></svg>
     </div>
   </details>
 
-  <p class="muted" style="margin-top:26px;font-size:13px">Michael Watson'ın <em>Slick Oil</em> oyunundan uyarlanmıştır (Opex Analytics / LLamasoft; web versiyonu Rémi Lequette).</p>
+  <p class="muted" style="margin-top:26px;font-size:13px" data-i18n-html="credit"></p>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="i18n.js"></script>
 <script src="scenarios.js"></script>
 <script src="network.js"></script>
 <script>
@@ -227,8 +239,10 @@ document.querySelectorAll("#roundSeg button").forEach(b => {
 function paintSeg() {
   const scen = SCENARIOS[uiRound];
   document.querySelectorAll("#roundSeg button").forEach(b => b.classList.toggle("act", +b.dataset.r === uiRound));
-  $("scenTxt").textContent = scen.title + " — talep " + scen.demand + "🛢";
-  $("scenHint").textContent = `${scen.title} — ${scen.wells.length} kuyu × ${scen.refs.length} rafineri, talep ${scen.demand}🛢`;
+  $("scenTxt").textContent = t("status.scen", { title: scenTitle(scen), demand: scen.demand });
+  $("scenHint").textContent = t("sect.scenHint", {
+    title: scenTitle(scen), wells: scen.wells.length, refs: scen.refs.length, demand: scen.demand
+  });
   $("durMin").value = { 1: 5, 2: 4, 3: 7 }[uiRound];
 }
 paintSeg();
@@ -245,17 +259,44 @@ $("btnStart").onclick = () => {
 $("btnClose").onclick = () => db.ref("state").update({ phase: "closed" });
 $("btnReveal").onclick = () => db.ref("state").update({ phase: "reveal" });
 $("btnLobby").onclick = () => db.ref("state").set({ round: uiRound, phase: "lobby" });
+
+// Skor silme.
+//
+// WHY: güvenlik kuralları yazma iznini `scores/$round` seviyesinde verir,
+// `scores` kökünde DEĞİL. Bu yüzden db.ref("scores").remove() 401 döner ve
+// hiçbir şey silinmez. Turlar tek tek silinmeli. Hatalar da yutulmamalı —
+// eskiden .catch() yoktu ve başarısız silme sessizce geçiyordu.
 $("btnWipe").onclick = () => {
-  const what = prompt(`Silinecek: "tur" (sadece Tur ${uiRound}) ya da "hepsi" yaz`, "tur");
-  if (what === "tur") db.ref("scores/r" + uiRound).remove();
-  else if (what === "hepsi") db.ref("scores").remove();
+  const counts = [1, 2, 3].map(r => Object.keys(scoresCache["r" + r]).length);
+  const answer = prompt(
+    t("wipe.prompt", { round: uiRound, c1: counts[0], c2: counts[1], c3: counts[2] }),
+    t("wipe.roundWord")
+  );
+  if (answer == null) return;
+  const said = answer.trim().toLowerCase();
+
+  let job = null;
+  if (tAll("wipe.allWord").includes(said)) job = Promise.all([1, 2, 3].map(r => db.ref("scores/r" + r).remove()));
+  else if (tAll("wipe.roundWord").includes(said)) job = db.ref("scores/r" + uiRound).remove();
+  else return;
+
+  job.catch(err => alert(t("wipe.failed", { error: err && err.message ? err.message : String(err) })));
 };
 
 // ---- durum
+// Durum henüz gelmediyse "bekleniyor", geldiyse fazın adı.
+let stateArrived = false;
+function paintPhase() {
+  if (!stateArrived) { $("phaseTxt").textContent = t("phase.waiting"); return; }
+  $("phaseTxt").textContent = state ? t("phase." + state.phase) : t("phase.none");
+}
+paintPhase();
+
 db.ref("state").on("value", snap => {
   state = snap.val();
+  stateArrived = true;
   if (state && state.round) { uiRound = state.round; paintSeg(); }
-  $("phaseTxt").textContent = state ? ({ lobby: "LOBİ — öğrenciler bekliyor", live: "TUR CANLI", closed: "TUR KAPALI — ifşa bekleniyor", reveal: "OPTİMAL AÇIKLANDI" })[state.phase] : "durum yok";
+  paintPhase();
   syncTimer(); refreshAll();
 });
 
@@ -288,7 +329,7 @@ function refreshAll() {
   if (scenDrawnFor !== scen.key) drawScenario(scen);
 
   // liderlik tablosu
-  $("subCount").textContent = `${Object.keys(scoresCache[k]).length} teslim, ${rows.length} oyuncu`;
+  $("subCount").textContent = t("board.count", { subs: Object.keys(scoresCache[k]).length, players: rows.length });
   $("thPts").style.display = revealed ? "" : "none";
   const tb = $("lb").querySelector("tbody");
   tb.innerHTML = "";
@@ -311,7 +352,7 @@ function refreshAll() {
   if (revealed) {
     $("sectOpt").open = true;
     $("optCostTxt").textContent = fmtMoney(opt);
-    $("optNote").textContent = scen.optimal.note;
+    $("optNote").textContent = scenNote(scen);
     drawOptimal(scen);
   }
 
@@ -330,8 +371,8 @@ function drawScenario(scen) {
   if (scenDrawnFor !== scen.key) {
     scenDrawnFor = scen.key;
     scenSel = null;
-    $("scenStory").innerHTML = `<strong class="display">${scen.title}</strong><br>${scen.story}`;
   }
+  $("scenStory").innerHTML = `<strong class="display">${scenTitle(scen)}</strong><br>${scenStory(scen)}`;
   paintScenario(scen);
 }
 
@@ -341,13 +382,12 @@ function paintScenario(scen) {
   $("scenDelivered").textContent = `${ev.delivered} / ${scen.demand}🛢`;
   $("scenCost").textContent = fmtMoney(ev.cost);
   const done = ev.delivered === scen.demand && ev.feasible;
-  $("scenStatus").textContent = done ? "✓ geçerli çözüm" : "";
-  $("scenStatus").className = "v slick";
+  $("scenStatus").textContent = done ? t("play.valid") : "";
   $("scenCtl").hidden = scenSel == null;
   if (scenSel != null) {
     const [w, r] = scen.links[scenSel];
-    $("scenPipeTitle").textContent = `Kuyu ${scen.wells[w].name} → Rafineri ${scen.refs[r].name}`;
-    $("scenPipeCost").textContent = "$" + unitCost(scen, scenSel) + "/varil";
+    $("scenPipeTitle").textContent = `${t("net.well")} ${scen.wells[w].name} → ${t("net.ref")} ${scen.refs[r].name}`;
+    $("scenPipeCost").textContent = "$" + unitCost(scen, scenSel) + t("pipe.perBarrel");
     $("scenFlow").textContent = flows[scenSel];
   }
 }
@@ -448,8 +488,8 @@ function drawHist(costs, optCost) {
   const W = 560, H = 300, padL = 16, padB = 34, padT = 18;
   el("line", { x1: padL, y1: H - padB, x2: W - 10, y2: H - padB, class: "hbar-axis" });
   if (!costs.length) {
-    const t = el("text", { x: W / 2, y: H / 2, class: "hlabel", "text-anchor": "middle" });
-    t.textContent = "henüz teslim yok"; return;
+    const label = el("text", { x: W / 2, y: H / 2, class: "hlabel", "text-anchor": "middle" });
+    label.textContent = t("hist.empty"); return;
   }
   let lo = Math.min(...costs), hi = Math.max(...costs);
   if (optCost != null) lo = Math.min(lo, optCost);
@@ -466,18 +506,18 @@ function drawHist(costs, optCost) {
     if (!n) return;
     const h = (H - padB - padT) * n / maxN;
     el("rect", { x: padL + i * bw + 2, y: H - padB - h, width: bw - 4, height: h, rx: 4, class: "hbar" });
-    const t = el("text", { x: padL + i * bw + bw / 2, y: H - padB - h - 6, class: "hcount", "text-anchor": "middle" });
-    t.textContent = n;
+    const count = el("text", { x: padL + i * bw + bw / 2, y: H - padB - h - 6, class: "hcount", "text-anchor": "middle" });
+    count.textContent = n;
   });
   for (let i = 0; i <= nBins; i += Math.ceil(nBins / 6)) {
-    const t = el("text", { x: padL + i * bw, y: H - padB + 18, class: "hlabel", "text-anchor": "middle" });
-    t.textContent = "$" + (b0 + i * binW);
+    const tick = el("text", { x: padL + i * bw, y: H - padB + 18, class: "hlabel", "text-anchor": "middle" });
+    tick.textContent = "$" + (b0 + i * binW);
   }
   if (optCost != null) {
     const ox = x(optCost);
     el("line", { x1: ox, y1: padT - 6, x2: ox, y2: H - padB, class: "optline" });
-    const t = el("text", { x: Math.min(ox + 6, W - 120), y: padT + 6, class: "optlabel" });
-    t.textContent = "OPTİMAL " + fmtMoney(optCost);
+    const label = el("text", { x: Math.min(ox + 6, W - 120), y: padT + 6, class: "optlabel" });
+    label.textContent = t("hist.opt", { cost: fmtMoney(optCost) });
   }
 }
 
@@ -496,7 +536,19 @@ function syncTimer() {
 }
 
 function esc(s) { return String(s).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c])); }
-function fmtT(t) { return t == null ? "—" : t.toFixed(0) + "sn"; }
+function fmtT(sec) { return sec == null ? "—" : sec.toFixed(0) + t("unit.sec"); }
+
+// ---- dil
+// applyI18n statik metinleri değiştirir; faz, senaryo, tablolar ve ağ
+// etiketleri burada yeniden çizilir.
+initLangToggle("langBtn", () => {
+  document.title = t("doc.title.host");
+  paintSeg();
+  paintPhase();
+  refreshAll();
+  redrawNetworks();
+});
+document.title = t("doc.title.host");
 </script>
 </body>
 </html>

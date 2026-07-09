@@ -33,6 +33,7 @@ dosyaları servis eder; tek dinamik bileşen Firebase Realtime Database'dir.
 | `scenarios.js` | Üç senaryonun verisi, LP ile doğrulanmış optimumlar ve paylaşılan saf fonksiyonlar (`evaluate`, `headroom`, `optimalFlowArray`, `unitCost`, `fmtMoney`). |
 | `network.js` | SVG ağ çizici. Oyun, hoca deneme alanı ve optimal ifşası aynı çiziciyi kullanır. |
 | `style.css` | Tasarım sistemi (renk değişkenleri, kart, buton, ağ stilleri). |
+| `i18n.js` | TR/EN sözlüğü ve `t()`, `applyI18n()`, `scenTitle/scenStory/scenNote` yardımcıları. |
 | `database.rules.json` | Güvenlik kuralları; Console'a yapıştırılan sürümün kaynağıdır. |
 | `tools/verify-scenarios.mjs` | Senaryo verisi bütünlük testi. |
 
@@ -88,6 +89,25 @@ değiştirip geri dönünce korunur.
 
 Kapasite sınırı hesabı (`headroom`) öğrenci oyunuyla **aynı fonksiyondur**
 (`scenarios.js`); iki ayrı kopya tutulmaz.
+
+## Dil (TR / EN)
+
+Tek sözlük (`i18n.js` → `I18N`), iki dil. Statik metinler HTML'de `data-i18n`
+(veya `-html`, `-ph`, `-alt`) ile işaretlenir ve `applyI18n()` doldurur. Dinamik
+metinler `t("anahtar", { değişken })` ile üretilir. Senaryo metinleri `scenarios.js`
+içinde `title` / `title_en` çiftleri olarak durur; `scenTitle()`, `scenStory()`,
+`scenNote()` doğru olanı seçer.
+
+Dil değişince `applyI18n()` statik metinleri günceller ve her sayfa kendi dinamik
+içeriğini yeniden çizer (`initLangToggle`'a verilen geri çağrı). Ağ SVG'si de yeniden
+çizilir — sütun başlıkları ve "MÜŞTERİ" etiketi de çeviriye tabidir.
+
+Seçim `localStorage` (`soa_lang`) içinde saklanır; ilk açılışta `navigator.language`
+Türkçe ise TR, değilse EN.
+
+> Yeni metin eklerken: anahtarı **iki sözlüğe de** ekleyin. Anahtar kümelerinin
+> eşitliği, kullanılmayan ("ölü") metinler ve `{değişken}` uyumsuzlukları
+> makineyle denetlenebilir; kod yalnızca sözlükte olan anahtarları kullanmalıdır.
 
 ## Bilinçli tasarım kısıtları
 

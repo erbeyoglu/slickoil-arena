@@ -7,7 +7,9 @@ const SCENARIOS = {
   1: {
     key: "r1",
     title: "Tur 1 — Kuruluş",
+    title_en: "Round 1 — Founding",
     story: "Slick Oil'in yeni operasyon müdürüsünüz. Müşteriye 100 varil ulaştırın — en düşük maliyetle. Birim maliyet = kuyu maliyeti + rafineri maliyeti.",
+    story_en: "You are Slick Oil's new operations manager. Deliver 100 barrels to the customer — at the lowest possible cost. Unit cost = well cost + refinery cost.",
     demand: 100,
     step: 10,
     wells: [
@@ -29,14 +31,17 @@ const SCENARIOS = {
     optimal: {
       cost: 690,
       flows: [[0,0,40],[2,1,40],[5,2,20]], // [wellIdx, refIdx, akış]
-      note: "Açgözlü strateji en ucuz hattı (1→B, $5) kapar ve $710'da kalır. Optimal, B'nin kıt kapasitesini Kuyu 3'e verir."
+      note: "Açgözlü strateji en ucuz hattı (1→B, $5) kapar ve $710'da kalır. Optimal, B'nin kıt kapasitesini Kuyu 3'e verir.",
+      note_en: "A greedy strategy grabs the cheapest pipe (1→B, $5) and stalls at $710. The optimum gives B's scarce capacity to Well 3 instead."
     }
   },
 
   2: {
     key: "r2",
     title: "Tur 2 — Kriz",
+    title_en: "Round 2 — Crisis",
     story: "KRİZ! En ucuz kuyunuz (Kuyu 6) arızalandı ve tamamen devre dışı. Üstelik müşteri talebi 120 varile çıktı. Aynı ağ, yeni gerçekler.",
+    story_en: "CRISIS! Your cheapest well (Well 6) has broken down and is completely offline. On top of that, customer demand has risen to 120 barrels. Same network, new facts.",
     demand: 120,
     step: 10,
     wells: [
@@ -58,14 +63,17 @@ const SCENARIOS = {
     optimal: {
       cost: 920,
       flows: [[0,0,40],[2,1,40],[3,0,40]],
-      note: "Aynı tuzak yine kurulu: 1→B ($5) cazip görünür ama açgözlü yaklaşım $1000'e çıkar. Optimal $920."
+      note: "Aynı tuzak yine kurulu: 1→B ($5) cazip görünür ama açgözlü yaklaşım $1000'e çıkar. Optimal $920.",
+      note_en: "The same trap is set again: 1→B ($5) looks tempting, but the greedy approach ends up at $1000. The optimum is $920."
     }
   },
 
   3: {
     key: "r3",
     title: "Tur 3 — Büyüme",
+    title_en: "Round 3 — Growth",
     story: "Şirket yeni bir saha satın aldı: 10 kuyu, 8 rafineri, 34 boru hattı. Talep 250 varil. Gerçek dünya problemleri böyle görünür — bol şans.",
+    story_en: "The company has acquired a new field: 10 wells, 8 refineries, 34 pipelines. Demand is 250 barrels. This is what real-world problems look like — good luck.",
     demand: 250,
     step: 10,
     wells: [
@@ -105,7 +113,8 @@ const SCENARIOS = {
     optimal: {
       cost: 1245,
       flows: [[0,0,30],[3,3,40],[3,6,40],[5,6,10],[5,7,20],[6,0,20],[6,3,20],[7,6,30],[9,5,40]],
-      note: "Optimal çözüm 9 farklı hat kullanıyor. Açgözlü strateji bile $1475'te kalır (%18.5 sapma). Bu boyutta el ile optimumu bulmak fiilen imkansızdır — LP çözücü milisaniyede bulur."
+      note: "Optimal çözüm 9 farklı hat kullanıyor. Açgözlü strateji bile $1475'te kalır (%18.5 sapma). Bu boyutta el ile optimumu bulmak fiilen imkansızdır — LP çözücü milisaniyede bulur.",
+      note_en: "The optimal solution uses 9 different pipes. Even a greedy strategy stalls at $1475 (18.5% off). Finding the optimum by hand at this size is practically impossible — an LP solver finds it in milliseconds."
     }
   }
 };
@@ -157,5 +166,8 @@ function optimalFlowArray(scen) {
 }
 
 function fmtMoney(x) {
-  return "$" + (Math.round(x * 10) / 10).toLocaleString("tr-TR");
+  // Binlik ayıracı dile göre değişir: $1.245 (tr) / $1,245 (en).
+  // i18n.js yüklü değilse (ör. tools/verify-scenarios.mjs) Türkçe varsayılır.
+  const locale = typeof i18nLocale === "function" ? i18nLocale() : "tr-TR";
+  return "$" + (Math.round(x * 10) / 10).toLocaleString(locale);
 }
