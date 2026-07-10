@@ -1,5 +1,31 @@
 # Changelog
 
+## [2026-07-10] — Tek teslim hakkı, optimuma uzaklık, ortalama-uzaklık klasmanı
+
+**Ne değişti:**
+- Öğrenci tur başına **bir kez** teslim edebilir. "Teslim et" bir onay penceresi açar;
+  onaydan sonra buton `✓ Teslim edildi — $X` olarak kilitlenir. Ağ isteği tamamlanmadan
+  buton kilitlenir (çift dokunuş ikinci kayıt göndermesin).
+- Canlı sıralamaya **uzaklık** sütunu eklendi: `100 × (maliyet − optimal) / optimal`.
+- Genel klasman artık puan toplamı değil, üç turun **uzaklık ortalaması** (küçük kazanır).
+  Teslim edilmeyen tur %100 uzaklık sayılır.
+- Aynı isimden birden çok kayıt gelirse **ilk** teslim geçerlidir (eskiden en ucuzu).
+
+**Neden ortalama uzaklık:** turların optimalleri farklı ($690 / $920 / $1245), dolayısıyla
+`1000 × optimal / maliyet` puanları farklı ölçeklerde. Toplamak, pahalı turlara sessizce
+daha fazla ağırlık verir. Uzaklık yüzdesi ölçeksizdir.
+
+**Düzeltilen sızıntı:** uzaklık ve puan, maliyetle birlikte optimumu ele verir
+(`optimal = maliyet / (1 + uzaklık/100)`). Puan sütunu zaten böyleydi ama **genel
+klasman ifşadan önce de gösteriliyordu**. Artık: uzaklık/puan sütunları yalnızca o tur
+ifşa edildikten sonra, genel klasman ise üç tur da açıklandıktan sonra görünür.
+İfşa edilmiş turlar panelin `localStorage`'ında tutulur; "Skorları sıfırla → hepsi"
+bu geçmişi de temizler.
+
+**Dahil edilmedi:** tek teslim kuralının sunucu tarafında zorlanması. Kurallar
+append-only olduğundan aynı isim ikinci bir kayıt yazabilir; panel bunu "ilk teslim
+geçerli" diyerek etkisizleştirir. Gerçek zorlama Firebase Auth gerektirirdi.
+
 ## [2026-07-10] — Panel her zaman Tur 1'de ve optimal kartı kapalı açılır
 
 **Ne değişti:** Hoca paneli sayfa yüklendiğinde Tur 1'de açılıyor. İstisna: o anda

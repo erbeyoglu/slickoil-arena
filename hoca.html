@@ -156,16 +156,23 @@
         <div class="block">
           <h3 class="display" data-i18n="board.live"></h3>
           <table id="lb">
-            <thead><tr><th data-i18n="th.rank"></th><th data-i18n="th.name"></th><th class="r" data-i18n="th.cost"></th><th class="r" data-i18n="th.time"></th><th class="r" id="thPts" style="display:none" data-i18n="th.points"></th></tr></thead>
+            <thead><tr>
+              <th data-i18n="th.rank"></th><th data-i18n="th.name"></th>
+              <th class="r" data-i18n="th.cost"></th><th class="r" data-i18n="th.time"></th>
+              <th class="r" id="thGap" style="display:none" data-i18n="th.gap"></th>
+              <th class="r" id="thPts" style="display:none" data-i18n="th.points"></th>
+            </tr></thead>
             <tbody></tbody>
           </table>
         </div>
         <div class="block">
           <h3 class="display"><span data-i18n="board.overall"></span> <span class="count" data-i18n="board.overallHint"></span></h3>
+          <p class="count" id="overallLocked" style="margin:8px 0"></p>
           <table id="overall">
-            <thead><tr><th data-i18n="th.rank"></th><th data-i18n="th.name"></th><th class="r">T1</th><th class="r">T2</th><th class="r">T3</th><th class="r" data-i18n="th.total"></th></tr></thead>
+            <thead><tr><th data-i18n="th.rank"></th><th data-i18n="th.name"></th><th class="r">T1</th><th class="r">T2</th><th class="r">T3</th><th class="r" data-i18n="th.avgGap"></th></tr></thead>
             <tbody></tbody>
           </table>
+          <p class="count" id="overallNote" style="margin-top:8px" data-i18n="board.missingNote"></p>
         </div>
       </div>
       <div>
@@ -213,6 +220,16 @@ let timerId = null;
 let scenDrawnFor = null;   // senaryo ağı hangi tur için çizildi
 const scenFlows = {};      // tur anahtarı → akış dizisi (turlar arası korunur)
 let scenSel = null;        // seçili boru indeksi
+
+// Teslim edilmemiş tur bu kadar uzaklık sayılır.
+const MISSING_ROUND_GAP = 100;
+
+// İfşa edilmiş turlar. WHY: uzaklık yüzdesi optimumu ele verir
+// (optimum = maliyet / (1 + uzaklık/100)). Bu yüzden bir turun uzaklıkları,
+// ancak o tur ifşa edildikten sonra perdeye çıkabilir.
+// Bu tanımlar ilk refreshAll() çağrısından ÖNCE gelmeli (temporal dead zone).
+const REVEALED_KEY = "soa_revealed";
+let revealedRounds = new Set(JSON.parse(localStorage.getItem(REVEALED_KEY) || "[]"));
 
 // ---- QR + link
 const joinUrl = location.href.replace(/hoca\.html.*$/, "");
@@ -290,9 +307,15 @@ $("btnWipe").onclick = () => {
   const said = answer.trim().toLowerCase();
 
   let job = null;
-  if (tAll("wipe.allWord").includes(said)) job = Promise.all([1, 2, 3].map(r => db.ref("scores/r" + r).remove()));
-  else if (tAll("wipe.roundWord").includes(said)) job = db.ref("scores/r" + uiRound).remove();
-  else return;
+  if (tAll("wipe.allWord").includes(said)) {
+    job = Promise.all([1, 2, 3].map(r => db.ref("scores/r" + r).remove()));
+    // Yeni bir ders başlıyor: ifşa geçmişi de sıfırlanmalı, yoksa genel klasman
+    // boş skorlarla açık gelir.
+    revealedRounds = new Set();
+    localStorage.removeItem(REVEALED_KEY);
+  } else if (tAll("wipe.roundWord").includes(said)) {
+    job = db.ref("scores/r" + uiRound).remove();
+  } else return;
 
   job.catch(err => alert(t("wipe.failed", { error: err && err.message ? err.message : String(err) })));
 };
@@ -331,24 +354,39 @@ db.ref("state").on("value", snap => {
   db.ref("scores/" + k).on("value", snap => { scoresCache[k] = snap.val() || {}; refreshAll(); });
 });
 
-// ---- her isim için en iyi (min maliyet, eşitlikte erken süre)
-function bestPerName(k) {
-  const best = {};
+// ---- her isim için geçerli teslim
+//
+// WHY: her öğrencinin tur başına TEK teslim hakkı vardır (index.html). Bu yüzden
+// aynı isimden birden çok kayıt görürsek — sayfa yenilemesi, localStorage temizliği
+// ya da kasıtlı bir deneme — geçerli olan İLK teslimdir. "En ucuzu al" deseydik
+// tekrar göndermek ödüllendirilirdi.
+function entryPerName(k) {
+  const first = {};
   for (const id in scoresCache[k]) {
     const s = scoresCache[k][id];
     if (!s || !s.name || typeof s.cost !== "number") continue;
-    const cur = best[s.name];
-    if (!cur || s.cost < cur.cost || (s.cost === cur.cost && s.timeSec < cur.timeSec)) best[s.name] = s;
+    const cur = first[s.name];
+    if (!cur || s.timeSec < cur.timeSec) first[s.name] = s;
   }
-  return Object.values(best).sort((a, b) => a.cost - b.cost || a.timeSec - b.timeSec);
+  return Object.values(first).sort((a, b) => a.cost - b.cost || a.timeSec - b.timeSec);
+}
+
+// Optimuma uzaklık, yüzde. Düşük olan iyidir; 0 = optimal.
+function gapPct(cost, opt) { return 100 * (cost - opt) / opt; }
+
+function markRevealed(round) {
+  if (revealedRounds.has(round)) return;
+  revealedRounds.add(round);
+  localStorage.setItem(REVEALED_KEY, JSON.stringify([...revealedRounds]));
 }
 
 function refreshAll() {
   const k = "r" + uiRound;
   const scen = SCENARIOS[uiRound];
-  const rows = bestPerName(k);
+  const rows = entryPerName(k);
   const revealed = state && state.phase === "reveal";
   const opt = scen.optimal.cost;
+  if (revealed) markRevealed(uiRound);
 
   // senaryo satırı — yalnızca tur değişince yeniden çiz.
   // WHY: her skor güncellemesinde yeniden çizmek, hocanın üzerinde çalıştığı
@@ -357,6 +395,8 @@ function refreshAll() {
 
   // liderlik tablosu
   $("subCount").textContent = t("board.count", { subs: Object.keys(scoresCache[k]).length, players: rows.length });
+  // WHY: uzaklık ve puan, maliyetle birlikte optimumu ele verir. Yalnızca ifşadan sonra.
+  $("thGap").style.display = revealed ? "" : "none";
   $("thPts").style.display = revealed ? "" : "none";
   const tb = $("lb").querySelector("tbody");
   tb.innerHTML = "";
@@ -367,6 +407,7 @@ function refreshAll() {
     tr.innerHTML = `<td>${i + 1}</td><td>${esc(s.name)}</td>` +
       `<td class="r mono">${fmtMoney(s.cost)}</td>` +
       `<td class="r mono muted">${fmtT(s.timeSec)}</td>` +
+      (revealed ? `<td class="r mono slick">${t("gap.value", { gap: gapPct(s.cost, opt).toFixed(1) })}</td>` : "") +
       (revealed ? `<td class="r mono violet">${Math.round(1000 * opt / s.cost)}</td>` : "");
     tb.appendChild(tr);
   });
@@ -484,26 +525,56 @@ function redrawNetworks() {
 let resizeId = null;
 window.addEventListener("resize", () => { clearTimeout(resizeId); resizeId = setTimeout(redrawNetworks, 150); });
 
+// Genel klasman: üç turun optimuma uzaklık ORTALAMASI, küçükten büyüğe.
+//
+// WHY toplam puan değil: puan = 1000·optimal/maliyet, ve turların optimalleri farklı
+// ($690 / $920 / $1245). Bu yüzden puanlar farklı ölçeklerde ve toplamak, pahalı
+// turlara sessizce daha çok ağırlık verir. Uzaklık yüzdesi ölçeksizdir; ortalaması
+// "sınıfın optimuma ne kadar yaklaştığı" sorusunu doğrudan yanıtlar.
+//
+// Teslim edilmeyen tur MISSING_ROUND_GAP (%100) sayılır — kaçırmak avantaj olmasın.
 function drawOverall() {
-  const pts = {};
-  [1, 2, 3].forEach(r => {
-    const opt = SCENARIOS[r].optimal.cost;
-    for (const s of bestPerName("r" + r)) {
-      pts[s.name] = pts[s.name] || { t1: 0, t2: 0, t3: 0 };
-      pts[s.name]["t" + r] = Math.round(1000 * opt / s.cost);
-    }
-  });
-  const rows = Object.entries(pts)
-    .map(([name, p]) => ({ name, ...p, tot: p.t1 + p.t2 + p.t3 }))
-    .sort((a, b) => b.tot - a.tot);
   const tb = $("overall").querySelector("tbody");
+  const allRevealed = [1, 2, 3].every(r => revealedRounds.has(r));
+
+  // WHY: uzaklık optimumu ele verir. Üç tur da açıklanmadan tablo perdeye çıkamaz.
+  $("overall").style.display = allRevealed ? "" : "none";
+  $("overallNote").style.display = allRevealed ? "" : "none";
+  $("overallLocked").style.display = allRevealed ? "none" : "";
+  if (!allRevealed) {
+    $("overallLocked").textContent = t("board.locked", { done: revealedRounds.size });
+    tb.innerHTML = "";
+    return;
+  }
+
+  const names = new Set();
+  const entries = {};   // tur → { isim: teslim }
+  [1, 2, 3].forEach(r => {
+    entries[r] = {};
+    for (const s of entryPerName("r" + r)) { entries[r][s.name] = s; names.add(s.name); }
+  });
+
+  const rows = [...names].map(name => {
+    const gaps = [1, 2, 3].map(r => {
+      const s = entries[r][name];
+      return s ? gapPct(s.cost, SCENARIOS[r].optimal.cost) : MISSING_ROUND_GAP;
+    });
+    const played = [1, 2, 3].map(r => !!entries[r][name]);
+    return { name, gaps, played, avg: (gaps[0] + gaps[1] + gaps[2]) / 3 };
+  }).sort((a, b) => a.avg - b.avg);
+
+  const cell = (gap, played) => played
+    ? `<td class="r mono">${t("gap.value", { gap: gap.toFixed(1) })}</td>`
+    : `<td class="r mono danger">${t("gap.value", { gap: MISSING_ROUND_GAP })}</td>`;
+
   tb.innerHTML = "";
   rows.slice(0, 12).forEach((r, i) => {
     const tr = document.createElement("tr");
     if (i === 0) tr.classList.add("top1");
+    if (r.avg < 1e-9) tr.classList.add("opt");   // üç turda da optimal
     tr.innerHTML = `<td>${i + 1}</td><td>${esc(r.name)}</td>` +
-      `<td class="r mono">${r.t1 || "—"}</td><td class="r mono">${r.t2 || "—"}</td><td class="r mono">${r.t3 || "—"}</td>` +
-      `<td class="r mono gold">${r.tot}</td>`;
+      cell(r.gaps[0], r.played[0]) + cell(r.gaps[1], r.played[1]) + cell(r.gaps[2], r.played[2]) +
+      `<td class="r mono gold">${t("gap.value", { gap: r.avg.toFixed(1) })}</td>`;
     tb.appendChild(tr);
   });
 }

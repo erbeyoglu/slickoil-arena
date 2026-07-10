@@ -225,11 +225,16 @@ function redraw() {
   const ev = renderNetwork($("net"), scen, flows, selected, onPipeTap);
   $("hudCostV").textContent = fmtMoney(ev.cost);
   const btn = $("submitBtn");
+  // Tur başına TEK teslim hakkı: gönderdikten sonra buton kilitlenir ve
+  // gönderilen maliyeti gösterir.
+  const alreadySent = submittedBest[scen.key] != null;
   const ok = ev.delivered === scen.demand && ev.feasible;
-  btn.disabled = !ok;
-  btn.textContent = ok
-    ? t(submittedBest[scen.key] != null ? "submit.better" : "submit.ok", { cost: fmtMoney(ev.cost) })
-    : t("submit.incomplete", { delivered: ev.delivered, demand: scen.demand });
+  btn.disabled = alreadySent || !ok;
+  btn.textContent = alreadySent
+    ? t("submit.done", { cost: fmtMoney(submittedBest[scen.key]) })
+    : ok
+      ? t("submit.ok", { cost: fmtMoney(ev.cost) })
+      : t("submit.incomplete", { delivered: ev.delivered, demand: scen.demand });
   return ev;
 }
 
@@ -290,17 +295,38 @@ $("submitBtn").addEventListener("click", () => {
   if (!s || s.phase !== "live") { toast(t("toast.closed"), true); return; }
   const ev = evaluate(scen, flows);
   if (!ev.feasible) { toast(t("toast.invalid"), true); return; }
+
+  // Tur başına tek teslim. Buton zaten kilitli ama çift dokunuş / yarış durumuna karşı.
   const prev = submittedBest[scen.key];
-  if (prev != null && ev.cost >= prev) { toast(t("toast.worse", { cost: fmtMoney(prev) }), true); return; }
+  if (prev != null) { toast(t("toast.already", { cost: fmtMoney(prev) }), true); return; }
+
+  // Geri dönüşü yok — onay iste.
+  if (!confirm(t("submit.confirm", { cost: fmtMoney(ev.cost) }))) return;
+
+  // Onaydan sonra tur kapanmış olabilir; tekrar bak.
+  const s2 = gState();
+  if (!s2 || s2.phase !== "live") { toast(t("toast.closed"), true); return; }
+  if (submittedBest[scen.key] != null) return;
+
   const startAt = s.endsAt - (s.duration || 300) * 1000;
   const timeSec = Math.max(0, Math.round((Date.now() - startAt) / 10) / 100);
+
+  // WHY: butonu ağ isteği tamamlanmadan kilitle. Aksi halde yavaş bağlantıda
+  // ikinci bir dokunuş ikinci bir kayıt gönderir ve "tek teslim" kuralı delinir.
+  $("submitBtn").disabled = true;
+
   db.ref("scores/" + scen.key).push({
     name: myName, cost: ev.cost, timeSec,
     ts: firebase.database.ServerValue.TIMESTAMP
   }).then(() => {
     submittedBest[scen.key] = ev.cost; saveBest();
     toast(t("toast.sent", { cost: fmtMoney(ev.cost) }));
-  }).catch(() => toast(t("toast.failed"), true));
+    redraw();          // butonu "✓ Teslim edildi" durumuna geçir
+    hidePipeBar();
+  }).catch(() => {
+    toast(t("toast.failed"), true);
+    redraw();          // gönderilemedi → tekrar denenebilsin
+  });
 });
 
 // ---- sonuç / ifşa ekranı

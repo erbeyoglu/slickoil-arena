@@ -52,10 +52,29 @@ Süre dolduğunda `closed`'a geçişi **hoca paneli** yazar (`hoca.html`, `syncT
 
 ## Puanlama
 
-- Tur puanı = `round(1000 × optimal / maliyet)`; yalnızca talebi tam karşılayan ve
-  kapasite aşmayan çözümler gönderilebilir (`submitBtn` aksi halde devre dışıdır).
-- Her oyuncunun bir turdaki **en iyi** teslimi sayılır (`bestPerName`); eşitlikte erken teslim önde.
-- Genel klasman üç turun puan toplamıdır.
+- **Tur başına tek teslim.** `submitBtn` yalnızca talep tam karşılandığında aktiftir;
+  basınca bir `confirm()` çıkar, onaydan sonra buton kalıcı olarak kilitlenir.
+- Her oyuncunun bir turdaki **ilk** teslimi sayılır (`entryPerName`). WHY: kural tek
+  teslimdir; "en ucuzu al" deseydik `localStorage`'ı temizleyip tekrar göndermek
+  ödüllendirilirdi. Sıralamada eşitlikte erken teslim önde.
+- **Uzaklık (gap)** = `100 × (maliyet − optimal) / optimal`. Genel klasman üç turun
+  uzaklık ortalamasıdır (küçük kazanır); teslim edilmeyen tur `MISSING_ROUND_GAP` (%100).
+- Tur puanı (`round(1000 × optimal / maliyet)`) yalnızca gösterilir, sıralamaz.
+
+### Optimum sızıntısı ve görünürlük kuralı
+
+Uzaklık yüzdesi, öğrencinin kendi maliyetiyle birleşince optimumu verir:
+`optimal = maliyet / (1 + uzaklık/100)`. Aynısı puan için de geçerlidir. Bu yüzden:
+
+| Ne | Ne zaman görünür |
+|---|---|
+| Uzaklık ve puan sütunları | o tur ifşa edildikten sonra (`state.phase === "reveal"`) |
+| Genel klasman | üç turun da optimali açıklandıktan sonra |
+| Optimal çözüm kartı | ifşadan sonra görünür, ama **kapalı**; hoca açar |
+
+İfşa edilmiş turlar panelin `localStorage`'ında (`soa_revealed`) tutulur — `state`
+düğümü tek bir turu taşıdığı için geçmişi veritabanında saklayamayız ve kurallar
+yeni bir kök düğüm yazmaya izin vermez.
 
 ## Ağ çizimi: iki geometri
 

@@ -91,9 +91,27 @@ Sitede build adımı yoktur: `main`'e push, birkaç dakika içinde yayına çık
 
 ## Puanlama
 
-- Tur puanı = `round(1000 × optimal / maliyet)` — yalnızca tam teslimatlı, kapasiteleri aşmayan çözümler gönderilebilir.
-- Eşitlikte erken teslim öndedir. Tur kapanana kadar daha iyi çözüm tekrar gönderilebilir; her oyuncunun en iyisi sayılır.
-- Genel klasman üç tur puanının toplamıdır. Optimumu tutturan 🏆 rozeti alır.
+- **Tur başına tek teslim hakkı.** Öğrenci "Teslim et"e bastığında bir onay penceresi
+  çıkar; onayladıktan sonra o turda değiştiremez. Böylece hem hız hem kalite yarışır.
+  Yalnızca tam teslimatlı, kapasiteleri aşmayan çözümler gönderilebilir.
+- **Optimuma uzaklık (gap)** = `100 × (maliyet − optimal) / optimal`. Sıfır = optimal.
+- **Genel klasman** = üç turun uzaklık **ortalaması**, küçükten büyüğe. Teslim edilmeyen
+  tur **%100** uzaklık sayılır.
+- Tur puanı (`round(1000 × optimal / maliyet)`) yalnızca bilgi amaçlı gösterilir;
+  sıralamayı artık belirlemez.
+
+> **Neden toplam puan değil, ortalama uzaklık?** Turların optimalleri farklıdır
+> ($690 / $920 / $1245). Puanlar bu yüzden farklı ölçeklerdedir ve toplamak, pahalı
+> turlara sessizce daha fazla ağırlık verir. Uzaklık yüzdesi ölçeksizdir.
+
+> **Sızıntı uyarısı.** Uzaklık yüzdesi ile maliyet birlikte optimumu ele verir
+> (`optimal = maliyet / (1 + uzaklık/100)`). Bu yüzden uzaklık ve puan sütunları
+> yalnızca o tur **ifşa edildikten sonra** görünür; genel klasman ise üç tur da
+> açıklanana kadar kilitlidir.
+
+> Aynı isimden birden çok kayıt gelirse (sayfa yenileme, `localStorage` temizliği,
+> kasıtlı deneme) geçerli olan **ilk** teslimdir — en ucuzu değil. Aksi halde tekrar
+> göndermek ödüllendirilirdi.
 
 ## Doğrulama
 
