@@ -182,7 +182,7 @@
     </div>
   </details>
 
-  <!-- 4 — optimal ifşası
+  <!-- 4 — optimal açıklaması
        Başlıkta maliyet YAZMAZ: bölüm kapalıyken bile perdede görünürdü.
        Maliyet yalnızca bölüm açıldığında, gövdede belirir. -->
   <details class="card sect revealbox" id="sectOpt" style="display:none">
@@ -224,9 +224,9 @@ let scenSel = null;        // seçili boru indeksi
 // Teslim edilmemiş tur bu kadar uzaklık sayılır.
 const MISSING_ROUND_GAP = 100;
 
-// İfşa edilmiş turlar. WHY: uzaklık yüzdesi optimumu ele verir
+// Açıklanmış turlar. WHY: uzaklık yüzdesi optimumu ele verir
 // (optimum = maliyet / (1 + uzaklık/100)). Bu yüzden bir turun uzaklıkları,
-// ancak o tur ifşa edildikten sonra perdeye çıkabilir.
+// ancak o tur açıklandıktan sonra perdeye çıkabilir.
 // Bu tanımlar ilk refreshAll() çağrısından ÖNCE gelmeli (temporal dead zone).
 const REVEALED_KEY = "soa_revealed";
 let revealedRounds = new Set(JSON.parse(localStorage.getItem(REVEALED_KEY) || "[]"));
@@ -309,7 +309,7 @@ $("btnWipe").onclick = () => {
   let job = null;
   if (tAll("wipe.allWord").includes(said)) {
     job = Promise.all([1, 2, 3].map(r => db.ref("scores/r" + r).remove()));
-    // Yeni bir ders başlıyor: ifşa geçmişi de sıfırlanmalı, yoksa genel klasman
+    // Yeni bir ders başlıyor: açıklama geçmişi de sıfırlanmalı, yoksa genel klasman
     // boş skorlarla açık gelir.
     revealedRounds = new Set();
     localStorage.removeItem(REVEALED_KEY);
@@ -395,7 +395,7 @@ function refreshAll() {
 
   // liderlik tablosu
   $("subCount").textContent = t("board.count", { subs: Object.keys(scoresCache[k]).length, players: rows.length });
-  // WHY: uzaklık ve puan, maliyetle birlikte optimumu ele verir. Yalnızca ifşadan sonra.
+  // WHY: uzaklık ve puan, maliyetle birlikte optimumu ele verir. Yalnızca açıklamadan sonra.
   $("thGap").style.display = revealed ? "" : "none";
   $("thPts").style.display = revealed ? "" : "none";
   const tb = $("lb").querySelector("tbody");
@@ -415,7 +415,7 @@ function refreshAll() {
   // histogram
   drawHist(rows.map(r => r.cost), revealed ? opt : null);
 
-  // İfşa satırı: "Optimali sınıfa aç"tan sonra GÖRÜNÜR olur ama KAPALI durur.
+  // Açıklama satırı: "Optimali sınıfa aç"tan sonra GÖRÜNÜR olur ama KAPALI durur.
   // Açmak hocanın tıklamasına kalmıştır; ağ da yalnızca açıkken çizilir.
   $("sectOpt").style.display = revealed ? "" : "none";
   if (revealed) {

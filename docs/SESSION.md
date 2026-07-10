@@ -13,7 +13,7 @@
 ile 10/10 doğrulandı; repo açıldı, Pages `main`/root'tan aktif.
 
 **Hoca paneli** dört katlanabilir satıra ayrıldı (QR / senaryo / sıralama+histogram /
-optimal ifşası). Senaryo satırı **oynanabilir**: hoca boruya tıklayıp akış deneyebiliyor,
+optimal açıklaması). Senaryo satırı **oynanabilir**: hoca boruya tıklayıp akış deneyebiliyor,
 maliyeti canlı görüyor. Tamamen yerel, Firebase'e yazmıyor.
 
 **Telefon okunabilirliği.** `NET_COMPACT` geometrisi (viewBox 660). Akış rakamları 390px
@@ -41,9 +41,9 @@ Aynı isimden çok kayıt gelirse **ilk** teslim geçerli.
 5. **"Skorları sıfırla → hepsi" hiçbir şey silmiyordu.** Kurallar yazma iznini
    `scores/$round` seviyesinde verir; `db.ref("scores").remove()` 401 dönüyor ve
    `.catch()` olmadığı için hata yutuluyordu.
-6. **Optimal maliyet katlanmış kartın başlığında yazıyordu** — projeksiyonda ifşadan önce
+6. **Optimal maliyet katlanmış kartın başlığında yazıyordu** — projeksiyonda açıklamadan önce
    okunuyordu. Başlıktan alındı; kart artık kendiliğinden de açılmıyor.
-7. **Genel klasman ifşadan önce puanları gösteriyordu** — puan, maliyetle birlikte
+7. **Genel klasman açıklamadan önce puanları gösteriyordu** — puan, maliyetle birlikte
    optimumu ele verir. Artık üç tur açıklanana kadar kilitli.
 8. Panel, veritabanında kalan tura kilitleniyordu → `shouldAdoptRound()`.
 
@@ -65,14 +65,14 @@ yazmadan çalışırlar (`db.ref` yamalanır). Bu testler `scratchpad`'de kaldı
 - Sunucu tarafı skor doğrulaması yok: şema olarak geçerli sahte skor gönderilebilir.
   Tek teslim kuralı da istemci tarafındadır; panel "ilk teslim geçerli" diyerek etkisizleştirir.
 - Aynı takma adı iki öğrenci kullanırsa skorları birleşir.
-- "✨ Optimali sınıfa aç" düğmesi kaldırılmadı: öğrenci telefonlarındaki ifşa fazını o
+- "✨ Optimali sınıfa aç" düğmesi kaldırılmadı: öğrenci telefonlarındaki açıklama fazını o
   tetikler (ADR-005).
-- İfşa geçmişi (`soa_revealed`) panelin tarayıcısında tutulur; başka bir makinede panel
+- Açıklama geçmişi (`soa_revealed`) panelin tarayıcısında tutulur; başka bir makinede panel
   açılırsa genel klasman yeniden kilitli görünür.
 
 ## Sonraki adımlar
 
 1. Panelde **Lobiye al** → `state` kalıntısını temizle.
-2. Telefonda Tur 3'ün ifşa ekranını aç: 9 akış etiketi okunur ve çakışmasız olmalı.
+2. Telefonda Tur 3'ün açıklama ekranını aç: 9 akış etiketi okunur ve çakışmasız olmalı.
 3. Ders öncesi iki cihazlı tam prova (README → ders akışı).
 4. Ders bitince kuralları kapat (`".write": false`) ya da skor düğümlerini temizle.

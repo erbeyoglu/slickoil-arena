@@ -82,7 +82,7 @@ const I18N = {
     "phase.none": "durum yok",
     "phase.lobby": "LOBİ — öğrenciler bekliyor",
     "phase.live": "TUR CANLI",
-    "phase.closed": "TUR KAPALI — ifşa bekleniyor",
+    "phase.closed": "TUR KAPALI — açıklama bekleniyor",
     "phase.reveal": "OPTİMAL AÇIKLANDI",
     "status.scen": "{title} — talep {demand}🛢",
 

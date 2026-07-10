@@ -28,7 +28,7 @@ tam birimsel yapısı sayesinde).
 ## Dosyalar
 
 - `index.html` — öğrenci oyunu (telefon öncelikli). QR ile girilir.
-- `hoca.html` — projektör paneli: tur başlat/kapat, canlı sıralama, histogram, optimal ifşa, genel klasman.
+- `hoca.html` — projektör paneli: tur başlat/kapat, canlı sıralama, histogram, optimal açıklama, genel klasman.
 - `scenarios.js` — senaryo verileri + önceden çözülmüş optimumlar.
 - `network.js` — ortak SVG ağ çizici.
 - `style.css` — tasarım sistemi.
@@ -84,10 +84,10 @@ Sitede build adımı yoktur: `main`'e push, birkaç dakika içinde yayına çık
 1. **Bağlam (3 dk).** "Bir petrol şirketinin operasyon müdürüsünüz." QR perdede, herkes takma adla girer.
 2. **Tur 1 (5 dk).** Serbest deneme. Süre bitince tur otomatik kapanır; histogram + sıralamayı gösterin ama optimumu **henüz açıklamayın**.
 3. **Kısa tartışma (3 dk).** "En düşük kaçtı? Daha iyisi var mı? Nereden bileceğiz?" — asıl soru budur.
-4. **İfşa 1 (3 dk).** *Optimali sınıfa aç*: $690 çizgisi histogramda belirir, optimal akış ağı ekrana gelir. 1→B tuzağını anlatın: en ucuz hat ($5) B'nin kıt 40 kapasitesini israf eder.
+4. **Açıklama 1 (3 dk).** *Optimali sınıfa aç*: $690 çizgisi histogramda belirir, optimal akış ağı ekrana gelir. 1→B tuzağını anlatın: en ucuz hat ($5) B'nin kıt 40 kapasitesini israf eder.
 5. **Tur 2 (4 dk).** "Kuyu 6 patladı, talep 120!" — duyarlılık: veri değişince optimum kayar, sezgi yine yanıltır.
 6. **Tur 3 (7 dk).** Büyük ağ. Kimse optimumu bulamayacak — mesele de bu.
-7. **Final ifşası + punchline (5 dk).** Genel klasman, madalyalar; sonra: "Sınıfın en iyisi optimumdan %X uzaktaydı. LP çözücü bunu ~1 milisaniyede buldu. Gerçek problemler 600 kuyu × 500 rafineridir. **Yöneylem Araştırması bunun için var.**"
+7. **Final açıklaması + punchline (5 dk).** Genel klasman, madalyalar; sonra: "Sınıfın en iyisi optimumdan %X uzaktaydı. LP çözücü bunu ~1 milisaniyede buldu. Gerçek problemler 600 kuyu × 500 rafineridir. **Yöneylem Araştırması bunun için var.**"
 
 ## Puanlama
 
@@ -106,7 +106,7 @@ Sitede build adımı yoktur: `main`'e push, birkaç dakika içinde yayına çık
 
 > **Sızıntı uyarısı.** Uzaklık yüzdesi ile maliyet birlikte optimumu ele verir
 > (`optimal = maliyet / (1 + uzaklık/100)`). Bu yüzden uzaklık ve puan sütunları
-> yalnızca o tur **ifşa edildikten sonra** görünür; genel klasman ise üç tur da
+> yalnızca o tur **açıklandıktan sonra** görünür; genel klasman ise üç tur da
 > açıklanana kadar kilitlidir.
 
 > Aynı isimden birden çok kayıt gelirse (sayfa yenileme, `localStorage` temizliği,

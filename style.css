@@ -97,7 +97,7 @@ svg.network { width: 100%; height: auto; display: block; }
 .cust-title { fill: var(--muted); font: 700 13px "Barlow Condensed", sans-serif; letter-spacing: .12em; }
 .cust-demand { fill: var(--paper); font: 700 16px "IBM Plex Mono", monospace; }
 
-/* optimal katman (hoca ifşası) */
+/* optimal katman (hoca açıklaması) */
 .pipe-opt { stroke: var(--violet) !important; }
 .flowtag-opt { stroke: var(--violet); }
 

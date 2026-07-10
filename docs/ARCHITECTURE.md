@@ -28,10 +28,10 @@ dosyaları servis eder; tek dinamik bileşen Firebase Realtime Database'dir.
 
 | Dosya | Sorumluluk |
 |---|---|
-| `index.html` | Öğrenci istemcisi: katılım, ağ üzerinde akış düzenleme, teslim, sonuç/ifşa ekranı. Tek yazma noktası: `scores/rN` altına push. |
-| `hoca.html` | Kontrol paneli: `state` düğümünü yazar (lobby → live → closed → reveal), leaderboard/histogram/genel klasman çizer, QR üretir. Dört katlanabilir satır: QR, senaryo (deneme alanı), sıralama+histogram, optimal ifşası. |
+| `index.html` | Öğrenci istemcisi: katılım, ağ üzerinde akış düzenleme, teslim, sonuç/açıklama ekranı. Tek yazma noktası: `scores/rN` altına push. |
+| `hoca.html` | Kontrol paneli: `state` düğümünü yazar (lobby → live → closed → reveal), leaderboard/histogram/genel klasman çizer, QR üretir. Dört katlanabilir satır: QR, senaryo (deneme alanı), sıralama+histogram, optimal açıklaması. |
 | `scenarios.js` | Üç senaryonun verisi, LP ile doğrulanmış optimumlar ve paylaşılan saf fonksiyonlar (`evaluate`, `headroom`, `optimalFlowArray`, `unitCost`, `fmtMoney`). |
-| `network.js` | SVG ağ çizici. Oyun, hoca deneme alanı ve optimal ifşası aynı çiziciyi kullanır. |
+| `network.js` | SVG ağ çizici. Oyun, hoca deneme alanı ve optimal açıklaması aynı çiziciyi kullanır. |
 | `style.css` | Tasarım sistemi (renk değişkenleri, kart, buton, ağ stilleri). |
 | `i18n.js` | TR/EN sözlüğü ve `t()`, `applyI18n()`, `scenTitle/scenStory/scenNote` yardımcıları. |
 | `database.rules.json` | Güvenlik kuralları; Console'a yapıştırılan sürümün kaynağıdır. |
@@ -68,11 +68,11 @@ Uzaklık yüzdesi, öğrencinin kendi maliyetiyle birleşince optimumu verir:
 
 | Ne | Ne zaman görünür |
 |---|---|
-| Uzaklık ve puan sütunları | o tur ifşa edildikten sonra (`state.phase === "reveal"`) |
+| Uzaklık ve puan sütunları | o tur açıklandıktan sonra (`state.phase === "reveal"`) |
 | Genel klasman | üç turun da optimali açıklandıktan sonra |
-| Optimal çözüm kartı | ifşadan sonra görünür, ama **kapalı**; hoca açar |
+| Optimal çözüm kartı | açıklamadan sonra görünür, ama **kapalı**; hoca açar |
 
-İfşa edilmiş turlar panelin `localStorage`'ında (`soa_revealed`) tutulur — `state`
+Açıklanmış turlar panelin `localStorage`'ında (`soa_revealed`) tutulur — `state`
 düğümü tek bir turu taşıdığı için geçmişi veritabanında saklayamayız ve kurallar
 yeni bir kök düğüm yazmaya izin vermez.
 

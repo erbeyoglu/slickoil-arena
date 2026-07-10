@@ -51,7 +51,7 @@ kaldırılır ve sıfırlama Console → Data sekmesinden yapılır.
 **Durum:** Kabul edildi
 
 **Bağlam:** Her senaryonun optimal maliyeti ve akışı gerekiyor: histogramdaki referans
-çizgisi, puanlama ve ifşa ekranı için.
+çizgisi, puanlama ve açıklama ekranı için.
 
 **Değerlendirilen seçenekler:**
 - Optimumu istemcide bir LP/min-cost-flow çözücüsüyle hesapla — Artı: senaryo verisi değişince otomatik güncellenir. Eksi: tarayıcıya çözücü kütüphanesi girer (build/bağımlılık), ders sırasında yanlış çalışma riski.
@@ -101,7 +101,7 @@ sözlük yapısına (`title: {tr, en}`) dönüştürülmelidir.
 
 **Bağlam:** Hoca paneli projeksiyondadır. Optimal çözüm bölümünün başlığı
 "Optimal çözüm — $690" yazıyordu; bölüm kapalıyken bile bu satır perdede okunuyordu,
-yani ifşadan önce cevabı sızdırıyordu. Oyunun tüm dramatik yapısı bu sayının
+yani açıklamadan önce cevabı sızdırıyordu. Oyunun tüm dramatik yapısı bu sayının
 saklanmasına dayanır.
 
 **Karar:** Başlık yalnızca "Optimal çözüm" der. Maliyet, bölüm açıldığında gövdede
@@ -109,10 +109,10 @@ büyük puntoyla belirir. Ayrıca bölüm, `state.phase === "reveal"` olana dek 
 görünmez.
 
 **Consequences / Sonuçları:** "✨ Optimali göster" düğmesi kaldırılmadı — o düğme
-paneli değil, **öğrenci telefonlarındaki** ifşa fazını tetikler. Ne yaptığı belirsiz
+paneli değil, **öğrenci telefonlarındaki** açıklama fazını tetikler. Ne yaptığı belirsiz
 kalmasın diye adı "Optimali sınıfa aç" (EN: "Reveal to class") oldu.
 
-Ayrıca kart, ifşa fazında görünür olsa da **kapalı** gelir ve açık/kapalı durumu
+Ayrıca kart, açıklama fazında görünür olsa da **kapalı** gelir ve açık/kapalı durumu
 `localStorage`'a yazılmaz (`SECT_NO_PERSIST`). Diğer satırlar hatırlanır; bu satır
 her yüklemede kapalıdır. Cevabı perdeye getirmek için bilinçli bir tıklama gerekir.
 
@@ -124,7 +124,7 @@ her yüklemede kapalıdır. Cevabı perdeye getirmek için bilinçli bir tıklam
 **Durum:** Kabul edildi
 
 **Bağlam:** `state` düğümü kalıcıdır. Ders bittiğinde içinde `{round: 3, phase: "reveal"}`
-kalır ve panel ertesi hafta Tur 3'te, ifşa fazında açılırdı.
+kalır ve panel ertesi hafta Tur 3'te, açıklama fazında açılırdı.
 
 **Değerlendirilen seçenekler:**
 - Her yüklemede koşulsuz Tur 1 — Artı: en basit, isteneni birebir yapar. Eksi: tur ortasında paneli yenilersen sayaç Tur 3'ü sayarken ekran Tur 1'i gösterir; hoca yanlış tura teslim başlatabilir.
