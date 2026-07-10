@@ -60,10 +60,14 @@ kaldırılır ve sıfırlama Console → Data sekmesinden yapılır.
 **Karar:** Önceden çözülmüş sabit değerler ($690 / $920 / $1245), ve bu değerlerin
 tutarlılığını koruyan bir doğrulama scripti (`tools/verify-scenarios.mjs`).
 
-**Sonuçları:** Site bağımlılıksız kalır. Senaryo verisi değişirse script kırmızı yanar —
-ama optimumu **yeniden hesaplamaz**; yalnızca beyan edilen çözümün hâlâ uygulanabilir
-olduğunu ve beyan edilen maliyeti verdiğini kontrol eder. Senaryo değişirse LP yeniden
-çözülmelidir.
+**Sonuçları:** Site bağımlılıksız kalır. Senaryo verisi değişirse `verify-scenarios.mjs`
+kırmızı yanar — ama optimumu **yeniden hesaplamaz**; yalnızca beyan edilen çözümün hâlâ
+uygulanabilir olduğunu ve beyan edilen maliyeti verdiğini kontrol eder.
+
+**Güncelleme (2026-07-10):** Optimalliğin kendisi artık `tools/solve-optimal.mjs` ile
+kanıtlanıyor — bağımsız bir min-cost flow çözücüsü, optimallik sertifikası ve LP zayıf
+dualitesinden bağımsız bir alt sınır. Senaryo verisi değişirse bu script yeni optimumu
+hesaplar; `scenarios.js`'teki değer elle güncellenmelidir.
 
 ---
 

@@ -97,16 +97,40 @@ Sitede build adımı yoktur: `main`'e push, birkaç dakika içinde yayına çık
 
 ## Doğrulama
 
-Senaryo verileri ve optimal çözümler değiştirilirse, tutarlılık şu komutla kontrol edilir
-(bağımlılık yok, build yok):
+Bağımlılık yok, build yok. İki ayrı script, iki ayrı iş yapar:
 
 ```bash
-node tools/verify-scenarios.mjs
+node tools/verify-scenarios.mjs   # beyan edilen çözüm tutarlı mı?
+node tools/solve-optimal.mjs      # beyan edilen çözüm gerçekten OPTİMAL mi?
 ```
 
-Kontrol ettikleri: her turun `optimal.flows` akışı gerçekten talebi karşılıyor mu, kapasiteleri
-aşıyor mu, `optimal.cost` ile hesaplanan maliyet aynı mı, akışlar `step` (10) katı mı ve
-`optimal.flows` içindeki her `[kuyu, rafineri]` çifti `links` içinde tanımlı mı.
+**`verify-scenarios.mjs`** yalnızca tutarlılığa bakar: `optimal.flows` akışı talebi
+karşılıyor mu, kapasiteleri aşıyor mu, `optimal.cost` ile hesaplanan maliyet aynı mı,
+akışlar `step` (10) katı mı, her `[kuyu, rafineri]` çifti `links` içinde tanımlı mı.
+Bu script "$920 gerçekten 920 tutuyor" der — "**920'den ucuzu yok**" demez.
+
+**`solve-optimal.mjs`** optimalliği kanıtlar. Problemi bir min-cost flow olarak kurar
+(kaynak → kuyular → boru hatları → rafineriler → hedef) ve ardışık en kısa yollarla
+çözer. Maliyetler ×2, akışlar ÷10 ölçeklenerek tam sayı aritmetiği kullanılır; yuvarlama
+hatası yoktur ve bulunan optimal akış otomatik olarak 10'un katı çıkar — yani optimum
+oyun içinde gerçekten erişilebilirdir.
+
+Kanıt iki ayaklıdır:
+
+1. **Optimallik sertifikası.** Algoritma bittiğinde artık grafta negatif indirgenmiş
+   maliyetli kenar kalmaz; bu, negatif çevrim olmaması demektir ve min-cost flow
+   teorisinde optimallikle eşdeğerdir.
+2. **Bağımsız alt sınır (LP zayıf dualitesi).** Herhangi bir π potansiyel vektörü için
+   `min-maliyet ≥ F·(π_t − π_s) − Σ_e u_e·[−(c_e + π_u − π_v)]₊` daima doğrudur.
+   Script bu alt sınırı hesaplar; üç senaryoda da beyan edilen maliyete **eşit** çıkar.
+   Yani daha ucuz bir çözüm matematiksel olarak imkânsızdır — bu sonuç, çözücünün
+   kendisinin doğru yazılmış olmasına bağlı değildir.
+
+Tur 1 ve Tur 2 ayrıca kaba kuvvetle (10'ar varillik tüm uygun dağıtımlar taranarak)
+bağımsız olarak doğrulanmıştır; aynı optimumu verir.
+
+Tablodaki açgözlü maliyetler ($710 / $1000 / $1475) da hesaplanarak doğrulanmıştır:
+en ucuz hattı bul, kapasite ve talep izin verdiği kadar doldur, tekrarla.
 
 ## Lisans
 
