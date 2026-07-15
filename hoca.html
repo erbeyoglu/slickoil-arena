@@ -204,10 +204,15 @@
 <script src="i18n.js"></script>
 <script src="scenarios.js"></script>
 <script src="network.js"></script>
+<script src="problems.js"></script>
 <script>
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.database();
 const $ = id => document.getElementById(id);
+
+// Aktif problem modülü. Şimdilik sabit "oil"; problem seçici eklenince
+// state.problem'dan gelecek (bkz. Aşama C).
+let PROBLEM = PROBLEMS.oil;
 
 let uiRound = 1;          // panelde seçili tur
 let state = null;          // rtdb state
@@ -218,8 +223,8 @@ let timerId = null;
 // WHY: bu tanımlar refreshAll()'un ilk çağrısından ÖNCE gelmeli — aksi halde
 // drawScenario onlara temporal dead zone içinde erişir.
 let scenDrawnFor = null;   // senaryo ağı hangi tur için çizildi
-const scenFlows = {};      // tur anahtarı → akış dizisi (turlar arası korunur)
-let scenSel = null;        // seçili boru indeksi
+const scenSols = {};       // "<problem>_<round>" → çözüm (turlar/problemler arası korunur)
+let scenUi = PROBLEM.initialUi();  // deneme alanının edit durumu (oil: {selected})
 
 // Teslim edilmemiş tur bu kadar uzaklık sayılır.
 const MISSING_ROUND_GAP = 100;
@@ -268,13 +273,14 @@ document.querySelectorAll("#roundSeg button").forEach(b => {
   b.addEventListener("click", () => { uiRound = +b.dataset.r; paintSeg(); refreshAll(); });
 });
 function paintSeg() {
-  const scen = SCENARIOS[uiRound];
+  const scen = PROBLEM.scenarios[uiRound];
   document.querySelectorAll("#roundSeg button").forEach(b => b.classList.toggle("act", +b.dataset.r === uiRound));
   $("scenTxt").textContent = t("status.scen", { title: scenTitle(scen), demand: scen.demand });
+  // sect.scenHint oil'e özgü alanlar (wells/refs) içerir; Aşama B'de PROBLEM'e taşınacak.
   $("scenHint").textContent = t("sect.scenHint", {
-    title: scenTitle(scen), wells: scen.wells.length, refs: scen.refs.length, demand: scen.demand
+    title: scenTitle(scen), wells: scen.wells ? scen.wells.length : "", refs: scen.refs ? scen.refs.length : "", demand: scen.demand
   });
-  $("durMin").value = { 1: 5, 2: 4, 3: 7 }[uiRound];
+  $("durMin").value = PROBLEM.durations[uiRound];
 }
 paintSeg();
 // WHY: senaryo ağı, tablolar ve histogram tamamen yereldir. Firebase'in ilk
@@ -382,10 +388,10 @@ function markRevealed(round) {
 
 function refreshAll() {
   const k = "r" + uiRound;
-  const scen = SCENARIOS[uiRound];
+  const scen = PROBLEM.scenarios[uiRound];
   const rows = entryPerName(k);
   const revealed = state && state.phase === "reveal";
-  const opt = scen.optimal.cost;
+  const opt = PROBLEM.optimalCost(scen);
   if (revealed) markRevealed(uiRound);
 
   // senaryo satırı — yalnızca tur değişince yeniden çiz.
@@ -405,7 +411,7 @@ function refreshAll() {
     if (i === 0) tr.classList.add("top1");
     if (revealed && Math.abs(s.cost - opt) < 1e-6) tr.classList.add("opt");
     tr.innerHTML = `<td>${i + 1}</td><td>${esc(s.name)}</td>` +
-      `<td class="r mono">${fmtMoney(s.cost)}</td>` +
+      `<td class="r mono">${PROBLEM.fmtCost(s.cost)}</td>` +
       `<td class="r mono muted">${fmtT(s.timeSec)}</td>` +
       (revealed ? `<td class="r mono slick">${t("gap.value", { gap: gapPct(s.cost, opt).toFixed(1) })}</td>` : "") +
       (revealed ? `<td class="r mono violet">${Math.round(1000 * opt / s.cost)}</td>` : "");
@@ -419,7 +425,7 @@ function refreshAll() {
   // Açmak hocanın tıklamasına kalmıştır; ağ da yalnızca açıkken çizilir.
   $("sectOpt").style.display = revealed ? "" : "none";
   if (revealed) {
-    $("optCostTxt").textContent = fmtMoney(opt);
+    $("optCostTxt").textContent = PROBLEM.fmtCost(opt);
     $("optNote").textContent = scenNote(scen);
     if ($("sectOpt").open) drawOptimal(scen);
   } else {
@@ -431,94 +437,102 @@ function refreshAll() {
 }
 
 // ---- senaryo satırı: hikâye + hocanın kendi deneyebileceği ağ
-// Her turun akışları ayrı tutulur, tur değiştirip geri dönünce kaybolmaz.
-function flowsFor(scen) {
-  if (!scenFlows[scen.key]) scenFlows[scen.key] = scen.links.map(() => 0);
-  return scenFlows[scen.key];
+// Her turun çözümü ayrı tutulur (problem+tur anahtarıyla), geçişte kaybolmaz.
+function solKey(scen) { return PROBLEM.key + "_" + scen.key; }
+function solFor(scen) {
+  if (!scenSols[solKey(scen)]) scenSols[solKey(scen)] = PROBLEM.emptySolution(scen);
+  return scenSols[solKey(scen)];
 }
 
 function drawScenario(scen) {
-  if (scenDrawnFor !== scen.key) {
-    scenDrawnFor = scen.key;
-    scenSel = null;
+  if (scenDrawnFor !== solKey(scen)) {
+    scenDrawnFor = solKey(scen);
+    scenUi = PROBLEM.initialUi();
   }
   $("scenStory").innerHTML = `<strong class="display">${scenTitle(scen)}</strong><br>${scenStory(scen)}`;
   paintScenario(scen);
 }
 
 function paintScenario(scen) {
-  const flows = flowsFor(scen);
-  const ev = renderNetwork($("netScen"), scen, flows, scenSel, i => onScenTap(scen, i));
-  $("scenDelivered").textContent = `${ev.delivered} / ${scen.demand}🛢`;
-  $("scenCost").textContent = fmtMoney(ev.cost);
-  const done = ev.delivered === scen.demand && ev.feasible;
+  const solc = solFor(scen);
+  const ev = PROBLEM.render($("netScen"), scen, solc, scenUi, i => onScenTap(scen, i));
+  $("scenDelivered").textContent = `${ev.delivered} / ${ev.demand}🛢`;
+  $("scenCost").textContent = PROBLEM.fmtCost(ev.cost);
+  const done = ev.delivered === ev.demand && ev.feasible;
   $("scenStatus").textContent = done ? t("play.valid") : "";
-  $("scenCtl").hidden = scenSel == null;
-  if (scenSel != null) {
-    const [w, r] = scen.links[scenSel];
+  // Akış kontrol çubuğu yalnızca oil (controls.kind === "flow"). TSP kendi çubuğunu
+  // Aşama B'de sağlayacak.
+  if (PROBLEM.controls.kind === "flow") updateScenFlowBar(scen, solc);
+}
+
+// oil deneme alanı akış çubuğu
+function updateScenFlowBar(scen, solc) {
+  $("scenCtl").hidden = scenUi.selected == null;
+  if (scenUi.selected != null) {
+    const [w, r] = scen.links[scenUi.selected];
     $("scenPipeTitle").textContent = `${t("net.well")} ${scen.wells[w].name} → ${t("net.ref")} ${scen.refs[r].name}`;
-    $("scenPipeCost").textContent = "$" + unitCost(scen, scenSel) + t("pipe.perBarrel");
-    $("scenFlow").textContent = flows[scenSel];
+    $("scenPipeCost").textContent = "$" + unitCost(scen, scenUi.selected) + t("pipe.perBarrel");
+    $("scenFlow").textContent = solc[scenUi.selected];
   }
 }
 
 function onScenTap(scen, i) {
-  scenSel = (scenSel === i) ? null : i;
+  const r = PROBLEM.onTap(scen, solFor(scen), scenUi, i);
+  scenSols[solKey(scen)] = r.sol; scenUi = r.ui;
   paintScenario(scen);
 }
 
 function scenBump(delta) {
-  const scen = SCENARIOS[uiRound];
-  if (scenSel == null) return;
-  const flows = flowsFor(scen);
-  if (delta > 0 && headroom(scen, flows, scenSel) < delta) {
+  const scen = PROBLEM.scenarios[uiRound];
+  if (scenUi.selected == null) return;
+  const flows = solFor(scen);
+  if (delta > 0 && headroom(scen, flows, scenUi.selected) < delta) {
     const ctl = $("scenCtl");
     ctl.classList.remove("shake"); void ctl.offsetWidth; ctl.classList.add("shake");
     return;
   }
-  flows[scenSel] = Math.max(0, flows[scenSel] + delta);
+  flows[scenUi.selected] = Math.max(0, flows[scenUi.selected] + delta);
   paintScenario(scen);
 }
 
-$("scenPlus").onclick = () => scenBump(SCENARIOS[uiRound].step);
-$("scenMinus").onclick = () => scenBump(-SCENARIOS[uiRound].step);
+$("scenPlus").onclick = () => scenBump(PROBLEM.scenarios[uiRound].step);
+$("scenMinus").onclick = () => scenBump(-PROBLEM.scenarios[uiRound].step);
 $("scenZero").onclick = () => {
-  const scen = SCENARIOS[uiRound];
-  if (scenSel == null) return;
-  flowsFor(scen)[scenSel] = 0;
+  const scen = PROBLEM.scenarios[uiRound];
+  if (scenUi.selected == null) return;
+  solFor(scen)[scenUi.selected] = 0;
   paintScenario(scen);
 };
 $("scenMax").onclick = () => {
-  const scen = SCENARIOS[uiRound];
-  if (scenSel == null) return;
-  const flows = flowsFor(scen);
-  const h = Math.floor(headroom(scen, flows, scenSel) / scen.step) * scen.step;
+  const scen = PROBLEM.scenarios[uiRound];
+  if (scenUi.selected == null) return;
+  const flows = solFor(scen);
+  const h = Math.floor(headroom(scen, flows, scenUi.selected) / scen.step) * scen.step;
   if (h <= 0) { scenBump(scen.step); return; }
-  flows[scenSel] += h;
+  flows[scenUi.selected] += h;
   paintScenario(scen);
 };
 $("scenReset").onclick = () => {
-  const scen = SCENARIOS[uiRound];
-  scenFlows[scen.key] = scen.links.map(() => 0);
-  scenSel = null;
+  const scen = PROBLEM.scenarios[uiRound];
+  scenSols[solKey(scen)] = PROBLEM.emptySolution(scen);
+  scenUi = PROBLEM.initialUi();
   paintScenario(scen);
 };
-// boş alana tıklayınca seçimi bırak
+// boş alana tıklayınca seçimi bırak (yalnız oil'de anlamlı)
 $("netScen").addEventListener("click", e => {
-  if (e.target === $("netScen")) { scenSel = null; paintScenario(SCENARIOS[uiRound]); }
+  if (e.target === $("netScen")) { scenUi = PROBLEM.initialUi(); paintScenario(PROBLEM.scenarios[uiRound]); }
 });
 
-// ---- optimal akış ağı (mor katman)
+// ---- optimal ağ (reveal katmanı)
 function drawOptimal(scen) {
-  renderNetwork($("netOpt"), scen, optimalFlowArray(scen), null, null);
-  $("netOpt").querySelectorAll(".pipe-on").forEach(p => p.classList.add("pipe-opt"));
-  $("netOpt").querySelectorAll(".flowtag").forEach(p => p.classList.add("flowtag-opt"));
+  PROBLEM.render($("netOpt"), scen, PROBLEM.optimalSolution(scen), PROBLEM.initialUi(), null);
+  PROBLEM.decorateOptimal($("netOpt"));
 }
 
 // ---- pencere yeniden boyutlanınca / bölüm açılınca ağları yeniden çiz
 function redrawNetworks() {
-  const scen = SCENARIOS[uiRound];
-  // Akışlar ve seçim korunur; yalnızca yeni genişliğe göre yeniden çizilir.
+  const scen = PROBLEM.scenarios[uiRound];
+  // Çözüm ve seçim korunur; yalnızca yeni genişliğe göre yeniden çizilir.
   if ($("sectScen").open) paintScenario(scen);
   if ($("sectOpt").open && $("sectOpt").style.display !== "none") drawOptimal(scen);
 }
@@ -557,7 +571,7 @@ function drawOverall() {
   const rows = [...names].map(name => {
     const gaps = [1, 2, 3].map(r => {
       const s = entries[r][name];
-      return s ? gapPct(s.cost, SCENARIOS[r].optimal.cost) : MISSING_ROUND_GAP;
+      return s ? gapPct(s.cost, PROBLEM.optimalCost(PROBLEM.scenarios[r])) : MISSING_ROUND_GAP;
     });
     const played = [1, 2, 3].map(r => !!entries[r][name]);
     return { name, gaps, played, avg: (gaps[0] + gaps[1] + gaps[2]) / 3 };
@@ -611,13 +625,13 @@ function drawHist(costs, optCost) {
   });
   for (let i = 0; i <= nBins; i += Math.ceil(nBins / 6)) {
     const tick = el("text", { x: padL + i * bw, y: H - padB + 18, class: "hlabel", "text-anchor": "middle" });
-    tick.textContent = "$" + (b0 + i * binW);
+    tick.textContent = PROBLEM.fmtCost(b0 + i * binW);
   }
   if (optCost != null) {
     const ox = x(optCost);
     el("line", { x1: ox, y1: padT - 6, x2: ox, y2: H - padB, class: "optline" });
     const label = el("text", { x: Math.min(ox + 6, W - 120), y: padT + 6, class: "optlabel" });
-    label.textContent = t("hist.opt", { cost: fmtMoney(optCost) });
+    label.textContent = t("hist.opt", { cost: PROBLEM.fmtCost(optCost) });
   }
 }
 

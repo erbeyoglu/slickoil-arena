@@ -146,19 +146,27 @@
 <script src="i18n.js"></script>
 <script src="scenarios.js"></script>
 <script src="network.js"></script>
+<script src="problems.js"></script>
 <script>
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.database();
+
+// Aktif problem modülü. Şimdilik sabit "oil"; panelde problem seçici eklenince
+// state.problem'dan gelecek (bkz. Aşama C). Probleme özgü her şey buradan okunur.
+let PROBLEM = PROBLEMS.oil;
 
 // ---- yerel durum
 let myName = localStorage.getItem("soa_name") || "";
 // oyun durumu gState() / gstateSet() ile tutulur
 let scen = null;
-let flows = [];
-let selected = null;
-let submittedBest = JSON.parse(localStorage.getItem("soa_best") || "{}"); // round → en iyi gönderilen maliyet
+let sol = [];              // çözüm (oil: link→akış dizisi; tsp: şehir sırası)
+let ui = PROBLEM.initialUi();  // geçici düzenleme durumu (oil: {selected}; tsp: {})
+let submittedBest = JSON.parse(localStorage.getItem("soa_best") || "{}"); // subKey → gönderilen maliyet
 function saveBest() { localStorage.setItem("soa_best", JSON.stringify(submittedBest)); }
 let timerId = null;
+
+// Tur başına teslim/koşu anahtarı. Aşama C'de PROBLEM.key ile namespace'lenecek.
+function subKey() { return scen.key; }
 
 const $ = id => document.getElementById(id);
 const screens = ["sJoin", "sLobby", "sGame", "sResult"];
@@ -197,19 +205,20 @@ function route() {
   if (!myName) { show("sJoin"); $("hud").style.display = "none"; return; }
   if (!s || s.phase === "lobby") { show("sLobby"); $("hud").style.display = "none"; $("submitBar").style.display = "none"; hidePipeBar(); return; }
 
-  scen = SCENARIOS[s.round];
-  $("hudRound").textContent = s.round + " / 3";
+  scen = PROBLEM.scenarios[s.round];
+  $("hudRound").textContent = s.round + " / " + PROBLEM.roundCount;
   $("hud").style.display = "flex";
 
   if (s.phase === "live") {
-    // aynı tur yeniden başlatıldıysa (yeni endsAt) eski "en iyi"yi unut
-    const runKey = "soa_run_" + scen.key;
+    // aynı tur yeniden başlatıldıysa (yeni endsAt) eski teslimi unut.
+    // sol._round: çözümün hangi tura ait olduğu damgası (yanlış turdan taşımayı önler).
+    const runKey = "soa_run_" + subKey();
     if (localStorage.getItem(runKey) !== String(s.endsAt)) {
       localStorage.setItem(runKey, String(s.endsAt));
-      delete submittedBest[scen.key]; saveBest();
-      flows = scen.links.map(() => 0); flows._round = s.round; selected = null;
+      delete submittedBest[subKey()]; saveBest();
+      sol = PROBLEM.emptySolution(scen); sol._round = s.round; ui = PROBLEM.initialUi();
     }
-    if (!flows._round || flows._round !== s.round) { flows = scen.links.map(() => 0); flows._round = s.round; selected = null; }
+    if (!sol._round || sol._round !== s.round) { sol = PROBLEM.emptySolution(scen); sol._round = s.round; ui = PROBLEM.initialUi(); }
     $("storyBox").innerHTML = `<strong class="display">${scenTitle(scen)}</strong><br>${scenStory(scen)}`;
     show("sGame");
     $("submitBar").style.display = "flex";
@@ -222,58 +231,65 @@ function route() {
 
 // ---- çizim + HUD
 function redraw() {
-  const ev = renderNetwork($("net"), scen, flows, selected, onPipeTap);
-  $("hudCostV").textContent = fmtMoney(ev.cost);
+  const ev = PROBLEM.render($("net"), scen, sol, ui, onElementTap);
+  $("hudCostV").textContent = PROBLEM.fmtCost(ev.cost);
   const btn = $("submitBtn");
   // Tur başına TEK teslim hakkı: gönderdikten sonra buton kilitlenir ve
   // gönderilen maliyeti gösterir.
-  const alreadySent = submittedBest[scen.key] != null;
-  const ok = ev.delivered === scen.demand && ev.feasible;
+  const alreadySent = submittedBest[subKey()] != null;
+  const ok = ev.delivered === ev.demand && ev.feasible;
   btn.disabled = alreadySent || !ok;
   btn.textContent = alreadySent
-    ? t("submit.done", { cost: fmtMoney(submittedBest[scen.key]) })
+    ? t("submit.done", { cost: PROBLEM.fmtCost(submittedBest[subKey()]) })
     : ok
-      ? t("submit.ok", { cost: fmtMoney(ev.cost) })
-      : t("submit.incomplete", { delivered: ev.delivered, demand: scen.demand });
+      ? t("submit.ok", { cost: PROBLEM.fmtCost(ev.cost) })
+      : t("submit.incomplete", { delivered: ev.delivered, demand: ev.demand });
   return ev;
 }
 
-// ---- boru düzenleme
-function onPipeTap(i) {
-  selected = (selected === i) ? null : i;
+// ---- bir SVG elemanına (boru/şehir) dokunma. Modül çözümü/ui'yi günceller;
+// kabuk yalnızca probleme özgü kontrol çubuğunu tazeler.
+function onElementTap(i) {
+  const r = PROBLEM.onTap(scen, sol, ui, i);
+  sol = r.sol; ui = r.ui;
   redraw();
-  if (selected == null) { hidePipeBar(); return; }
-  const [w, r] = scen.links[selected];
+  if (PROBLEM.controls.kind === "flow") updateFlowBar();
+}
+
+// ---- akış kontrol çubuğu (yalnızca oil; controls.kind === "flow")
+function updateFlowBar() {
+  if (ui.selected == null) { hidePipeBar(); return; }
+  const [w, r] = scen.links[ui.selected];
   $("pipeTitle").textContent = `${t("net.well")} ${scen.wells[w].name} → ${t("net.ref")} ${scen.refs[r].name}`;
-  $("pipeCost").textContent = "$" + unitCost(scen, selected) + t("pipe.perBarrel");
-  $("pipeFlowV").textContent = flows[selected];
+  $("pipeCost").textContent = "$" + unitCost(scen, ui.selected) + t("pipe.perBarrel");
+  $("pipeFlowV").textContent = sol[ui.selected];
   $("pipeBar").classList.add("on");
 }
-function hidePipeBar() { $("pipeBar").classList.remove("on"); selected = null; }
+function hidePipeBar() { $("pipeBar").classList.remove("on"); ui.selected = null; }
 
 function setFlow(i, v) {
-  flows[i] = Math.max(0, v);
-  $("pipeFlowV").textContent = flows[i];
+  sol[i] = Math.max(0, v);
+  $("pipeFlowV").textContent = sol[i];
   redraw();
 }
 function bump(delta) {
-  if (selected == null) return;
-  if (delta > 0 && headroom(scen, flows, selected) < delta) {
+  if (ui.selected == null) return;
+  if (delta > 0 && headroom(scen, sol, ui.selected) < delta) {
     $("pipeBar").classList.remove("shake"); void $("pipeBar").offsetWidth;
     $("pipeBar").classList.add("shake");
     toast(t("toast.capacity"), true);
     return;
   }
-  setFlow(selected, flows[selected] + delta);
+  setFlow(ui.selected, sol[ui.selected] + delta);
 }
 $("pbPlus").onclick = () => bump(scen.step);
 $("pbMinus").onclick = () => bump(-scen.step);
-$("pbZero").onclick = () => { if (selected != null) setFlow(selected, 0); };
+$("pbZero").onclick = () => { if (ui.selected != null) setFlow(ui.selected, 0); };
 $("pbMax").onclick = () => {
-  if (selected == null) return;
-  const h = Math.floor(headroom(scen, flows, selected) / scen.step) * scen.step;
+  if (ui.selected == null) return;
+  const h = Math.floor(headroom(scen, sol, ui.selected) / scen.step) * scen.step;
   if (h <= 0) { bump(scen.step); return; }
-  setFlow(selected, flows[selected] + h);
+  setFlow(ui.selected, sol[ui.selected] + h);
 };
 // boş alana tıklayınca menüyü kapat
 $("net").addEventListener("click", e => { if (e.target === $("net")) { hidePipeBar(); redraw(); } });
@@ -290,23 +306,25 @@ window.addEventListener("resize", () => {
 });
 
 // ---- teslim
+function scoresPath() { return "scores/" + scen.key; }  // Aşama C: scores/<problem>/rN
+
 $("submitBtn").addEventListener("click", () => {
   const s = gState();
   if (!s || s.phase !== "live") { toast(t("toast.closed"), true); return; }
-  const ev = evaluate(scen, flows);
+  const ev = PROBLEM.evaluate(scen, sol);
   if (!ev.feasible) { toast(t("toast.invalid"), true); return; }
 
   // Tur başına tek teslim. Buton zaten kilitli ama çift dokunuş / yarış durumuna karşı.
-  const prev = submittedBest[scen.key];
-  if (prev != null) { toast(t("toast.already", { cost: fmtMoney(prev) }), true); return; }
+  const prev = submittedBest[subKey()];
+  if (prev != null) { toast(t("toast.already", { cost: PROBLEM.fmtCost(prev) }), true); return; }
 
   // Geri dönüşü yok — onay iste.
-  if (!confirm(t("submit.confirm", { cost: fmtMoney(ev.cost) }))) return;
+  if (!confirm(t("submit.confirm", { cost: PROBLEM.fmtCost(ev.cost) }))) return;
 
   // Onaydan sonra tur kapanmış olabilir; tekrar bak.
   const s2 = gState();
   if (!s2 || s2.phase !== "live") { toast(t("toast.closed"), true); return; }
-  if (submittedBest[scen.key] != null) return;
+  if (submittedBest[subKey()] != null) return;
 
   const startAt = s.endsAt - (s.duration || 300) * 1000;
   const timeSec = Math.max(0, Math.round((Date.now() - startAt) / 10) / 100);
@@ -315,12 +333,12 @@ $("submitBtn").addEventListener("click", () => {
   // ikinci bir dokunuş ikinci bir kayıt gönderir ve "tek teslim" kuralı delinir.
   $("submitBtn").disabled = true;
 
-  db.ref("scores/" + scen.key).push({
+  db.ref(scoresPath()).push({
     name: myName, cost: ev.cost, timeSec,
     ts: firebase.database.ServerValue.TIMESTAMP
   }).then(() => {
-    submittedBest[scen.key] = ev.cost; saveBest();
-    toast(t("toast.sent", { cost: fmtMoney(ev.cost) }));
+    submittedBest[subKey()] = ev.cost; saveBest();
+    toast(t("toast.sent", { cost: PROBLEM.fmtCost(ev.cost) }));
     redraw();          // butonu "✓ Teslim edildi" durumuna geçir
     hidePipeBar();
   }).catch(() => {
@@ -331,16 +349,16 @@ $("submitBtn").addEventListener("click", () => {
 
 // ---- sonuç / açıklama ekranı
 function showResult(s) {
-  const mine = submittedBest[scen.key];
+  const mine = submittedBest[subKey()];
   let html = `<h2 class="display" style="font-size:30px">${t("result.over", { title: scenTitle(scen) })}</h2>`;
   if (mine != null) {
-    html += `<p class="muted" style="margin-top:8px">${t("result.yourBest")}</p><div class="bigstat gold">${fmtMoney(mine)}</div>`;
+    html += `<p class="muted" style="margin-top:8px">${t("result.yourBest")}</p><div class="bigstat gold">${PROBLEM.fmtCost(mine)}</div>`;
   } else {
     html += `<p class="muted" style="margin-top:12px">${t("result.none")}</p>`;
   }
   if (s.phase === "reveal") {
-    const opt = scen.optimal.cost;
-    html += `<p class="muted" style="margin-top:18px">${t("result.optCost")}</p><div class="bigstat violet">${fmtMoney(opt)}</div>`;
+    const opt = PROBLEM.optimalCost(scen);
+    html += `<p class="muted" style="margin-top:18px">${t("result.optCost")}</p><div class="bigstat violet">${PROBLEM.fmtCost(opt)}</div>`;
     if (mine != null) {
       const gap = 100 * (mine - opt) / opt;
       if (gap < 0.01) html += `<div class="badge opt">${t("result.badgeOpt")}</div>`;
@@ -355,10 +373,8 @@ function showResult(s) {
   $("resultInner").innerHTML = html;
   show("sResult");
   if (s.phase === "reveal") {
-    const optFlows = optimalFlowArray(scen);
-    renderNetwork($("netOpt"), scen, optFlows, null, null);
-    $("netOpt").querySelectorAll(".pipe-on").forEach(p => p.classList.add("pipe-opt"));
-    $("netOpt").querySelectorAll(".flowtag").forEach(p => p.classList.add("flowtag-opt"));
+    PROBLEM.render($("netOpt"), scen, PROBLEM.optimalSolution(scen), PROBLEM.initialUi(), null);
+    PROBLEM.decorateOptimal($("netOpt"));
   }
 }
 

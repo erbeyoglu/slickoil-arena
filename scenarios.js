@@ -139,7 +139,9 @@ function evaluate(scen, flows) {
   });
   const okW = wUsed.every((u, i) => u <= scen.wells[i].cap);
   const okR = rUsed.every((u, i) => u <= scen.refs[i].cap);
-  return { wUsed, rUsed, delivered, cost, feasible: okW && okR && delivered === scen.demand };
+  // demand: probleme-agnostik kabuğun ev.demand okuyabilmesi için (tspEvaluate ile
+  // aynı şekil). feasible hesabı değişmedi; yalnızca dönüş zenginleşti.
+  return { wUsed, rUsed, delivered, cost, demand: scen.demand, feasible: okW && okR && delivered === scen.demand };
 }
 
 // Bir hatta EK olarak konabilecek en fazla akış: kuyunun kalan kapasitesi,
