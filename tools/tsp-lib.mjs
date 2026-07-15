@@ -166,6 +166,35 @@ export function bestNearestNeighbor(d) {
   return { cost: best, tour: bt };
 }
 
+// 2-opt: kesişmeleri kaldırır (öğrencinin görsel yaptığı iyileştirme).
+export function twoOpt(d, tour0) {
+  const t = tour0.slice(), n = t.length;
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let i = 1; i < n - 1; i++) for (let k = i + 1; k < n; k++) {
+      const a = t[i - 1], b = t[i], c = t[k], e = t[(k + 1) % n];
+      if (a === c || b === e) continue;
+      if (d[a][c] + d[b][e] - d[a][b] - d[c][e] < -1e-9) {
+        let l = i, r = k; while (l < r) { const tmp = t[l]; t[l] = t[r]; t[r] = tmp; l++; r--; }
+        improved = true;
+      }
+    }
+  }
+  return { cost: tourCost(d, t), tour: t };
+}
+
+// Çok-başlangıçlı 2-opt üst sınırı (optimumun üstünde bir tur; kanıt için tavan).
+export function upperBound(d, starts = 12) {
+  const n = d.length;
+  let best = Infinity, bt = null;
+  for (let s = 0; s < Math.min(n, starts); s++) {
+    const r = twoOpt(d, nearestNeighbor(d, s).tour);
+    if (r.cost < best) { best = r.cost; bt = r.tour; }
+  }
+  return { cost: best, tour: bt };
+}
+
 // --- Held–Karp ALT SINIRI (1-tree + Lagrange). DP ile karıştırılmamalı:
 // bu bir ALT SINIRDIR, optimum değil. Optimuma eşit çıkarsa sertifika olur.
 export function heldKarpBound(d, iters = 300) {

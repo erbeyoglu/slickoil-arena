@@ -1,5 +1,32 @@
 # Changelog
 
+## [2026-07-15] — TSP büyütüldü (20/40/60) + MIP çözücü ile kesin optimum
+
+**Ne değişti:** TSP turları 6/12/18'den **20/40/60 durağa** çıkarıldı. Sebep ölçüldü:
+küçük görsel Euclidean TSP'de öğrencinin "dıştan git, kesiştirme" sezgisi (çok-başlangıçlı
+2-opt) üç senaryonun da tam optimalini buluyordu (%0.0) — ders ters tepiyordu. Aynı şey
+Knapsack için de doğru çıktı (greedy %0.1): küçük örnekler kolaydır.
+
+Çözüm: turları el ile çözülemeyecek kadar büyüt + noktaları **uniform** dağıt (jittered
+grid; kümelenme yok, convex-hull sezgisi zayıflar) + her instance'ı öğrenci sezgisine
+(2-opt) karşı direnci ÖLÇEREK seç. Sonuç gap'ler (gerçekçi tek-geçiş 2-opt): %3.9 / %7.7
+/ %10.4; naif en-yakın-komşu %23-30. Büyük n'de öğrenci elle 2-opt'u zaten yapamaz.
+
+**MIP çözücü:** Bu boyutta Held–Karp DP imkânsız (2ⁿ bellek). Optimumlar açık kaynak
+bir MIP çözücüyle KESİN çözüldü — `tools/tsp-mip-solve.py` (PuLP + CBC, DFJ alt-tur
+eleme, iteratif). Ölçüldü: n=100'ü bile ~40 sn'de kesin çözer. Bu bir geliştirme-zamanı
+aracı; optimum önceden çözülüp veriye gömülür, site bağımlılıksız kalır (Slick Oil'de
+LP optimumunu önceden çözmek gibi). Doğruluk: MIP formülasyonu küçük referanslarda
+Held–Karp DP ile birebir aynı (190/293/334); `tools/tsp-solve.mjs` her turda bağımsız
+alt sınır ≤ optimum ≤ üst sınır çerçevesini denetler (alt sınır MIP'i hiç aşmadı).
+
+**Telefon:** TSP çizici bounding-box'a göre otomatik ölçekleniyor (koordinatlar 0-1000).
+Daire ve dokunma alanı en yakın şehir çiftine bağlı — çakışmıyor, telefonda parmakla
+yanlış şehir seçilemez (matematiksel garanti). Boyut ve yazı şehir sayısına göre.
+
+**Etkisi:** Oil ve problem-modülü mimarisi değişmedi. TSP süreleri {1:3,2:4,3:5} dk.
+Doğrulama: CDP regresyon 105 kontrol (oil 69 + tsp 14 + switch 15 + namespace 7).
+
 ## [2026-07-15] — İkinci oyun: Gezgin Satıcı (TSP) + problem modülü mimarisi
 
 **Ne değişti:** Site artık iki optimizasyon oyunu barındırıyor. Hoca panelinde Oil/TSP

@@ -178,3 +178,29 @@ başınadır (kullanıcı kararı: birleşik 6-tur klasmanı değil, iki ayrı k
 **Sonuçları:** Güvenlik kuralları `scores/$problem/$round` derinliğine güncellendi.
 Öğrenci bir problemi teslim etse de diğerini oynayabilir (kilitler bağımsız). "Dersin
 en iyisi" diye tek kişi yoktur; her oyunun kendi şampiyonu olur.
+
+---
+
+## ADR-009 — TSP büyük + uniform + MIP ile kesin optimum
+
+**Tarih:** 2026-07-15
+**Durum:** Kabul edildi (ADR-008'deki küçük TSP'yi geçersiz kılar)
+
+**Bağlam:** İlk TSP (6/12/18 şehir) ders amacına ters düştü: küçük görsel Euclidean
+TSP'de öğrencinin 2-opt sezgisi tam optimali buluyordu (ölçüldü, %0.0). "Sezgi çöker"
+mesajı küçük örneklerle verilemez — küçük = kolay (Knapsack'te de greedy %0.1).
+
+**Değerlendirilen seçenekler:**
+- Problemi değiştir (Knapsack vb.) — Eksi: onlar da küçükte kolay; kök sorun çözülmez.
+- Küçük TSP tut, mesajı "kanıtla" yap — Eksi: "çat diye buldum" hissini yenmez.
+- TSP'yi büyüt (elle imkânsız) — Artı: ölçek mesajı gerçek. Eksi: kesin optimum n>20'de Held–Karp DP ile imkânsız.
+
+**Karar:** TSP'yi büyüt (20/40/60), noktaları uniform dağıt (sezgiyi zayıflatır), her
+instance'ı sezgi-direnci ölçerek seç. Kesin optimum için **MIP çözücü** (PuLP+CBC, DFJ
+alt-tur eleme) — kullanıcı önerisi. Held–Karp DP değil çünkü n=60'ta 2⁶⁰ bellek.
+
+**Sonuçları:** Python + CBC bir geliştirme-zamanı bağımlılığıdır (yalnızca optimum
+üretiminde; site bağımlılıksız). Doğrulama iki katmanlı: MIP=DP küçük referansta, ve
+alt/üst sınır çerçevesi her turda. `tools/tsp-lib.mjs`'teki Held–Karp DP artık yalnızca
+küçük-referans cross-check için durur (üretimde MIP). Üçüncü bir çok-büyük tur eklemek
+= MIP'e yeni koordinat vermek (n≤100 saniyeler).

@@ -32,20 +32,29 @@ seçildiği için optimum oyun içinde erişilebilirdir.
 
 ## Problem 2 — Gezgin Satıcı / TSP
 
-Bakım ekibi depodan çıkıp her kuyuyu tam bir kez ziyaret edip döner; amaç en kısa
-tur. Öğrenci şehirlere ziyaret sırasına göre dokunur (Geri al / Temizle ile düzeltir).
+Bakım ekibi depodan çıkıp her durağı tam bir kez ziyaret edip döner; amaç en kısa
+tur. Öğrenci duraklara ziyaret sırasına göre dokunur (Geri al / Temizle ile düzeltir).
 
-| Tur | Şehir | Tur sayısı | Optimal | Açgözlü (en yakın komşu) |
+| Tur | Durak | Olası tur | Optimal | Açgözlü (en yakın komşu) |
 |---|---|---|---|---|
-| 1 — Bakım Turu | 6 | 60 | **190 km** | 233 km (%22.6) |
-| 2 — Saha Genişledi | 12 | 19.958.400 | **293 km** | 384 km (%31.1) |
-| 3 — Bütün Saha | 18 | 177.843.714.048.000 | **334 km** | 427 km (%27.8) |
+| 1 — Küçük Rota | 20 | 6×10¹⁶ | **4.357 km** | 5.375 km (%23.4) |
+| 2 — Büyüyen Saha | 40 | 10⁴⁶ | **5.661 km** | 7.193 km (%27.1) |
+| 3 — Bütün Ağ | 60 | 7×10⁷⁹ | **6.624 km** | 8.634 km (%30.3) |
 
-Mesafeler TSPLIB EUC_2D (tamsayı). Optimumlar **üç bağımsız kesin yöntemle** kanıtlanmıştır:
-Held–Karp dinamik programlama (`O(2ⁿ·n²)`), dal-sınır, ve kaba kuvvet (n=6).
-Held–Karp alt sınırı (1-tree + Lagrange) üçünde de optimuma eşittir — çözücüden
-bağımsız optimallik sertifikası. Punchline: Tur 2'de kaba kuvvet bir bilgisayar için
-~20 saniye, Tur 3'te (sadece 6 şehir fazla) ~5,6 YIL; DP ise çeyrek saniyede çözer.
+**Neden büyük?** Küçük görsel TSP'de öğrencinin "dıştan git, yolları kesiştirme"
+sezgisi (2-opt) neredeyse optimali bulur — ölçüldü, ders ters teper. Bu yüzden turlar
+büyüktür (el ile çözülemez) ve noktalar **uniform** dağıtılmıştır (kümelenme yok, sezgi
+zayıflar). Her instance öğrenci sezgisine karşı direnci ölçülerek seçilmiştir.
+
+Mesafeler TSPLIB EUC_2D (tamsayı). Bu boyutta Held–Karp DP imkânsızdır (2ⁿ); optimumlar
+bir **MIP çözücü** ile KESİN çözülmüştür (`tools/tsp-mip-solve.py` — PuLP + CBC, DFJ
+alt-tur eleme; n=100'e kadar saniyeler). Doğrulama iki katmanlı: MIP formülasyonu küçük
+referanslarda Held–Karp DP ile birebir aynı çıkar; `tools/tsp-solve.mjs` her turda
+bağımsız alt sınır ≤ optimum ≤ sezgisel üst sınır çerçevesini denetler.
+
+Punchline: Tur 3'te olası tur sayısı 80 haneli — gözlemlenebilir evrendeki atom kadar.
+Kaba kuvvet imkânsız; ama MIP çözücü optimumu saniyeler içinde KESİN bulur. Akıllı
+arama, körü körüne saymaktan farklıdır.
 
 ## Dosyalar
 

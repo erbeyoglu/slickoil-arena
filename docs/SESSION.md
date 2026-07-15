@@ -1,49 +1,50 @@
 # Session: 2026-07-15
 
 **Şu anki durum:**
-- Site iki oyunlu: **Slick Oil** (min-cost flow) + **TSP** (gezgin satıcı).
-- Yerelde tamamlandı ve CDP tarayıcı testleriyle doğrulandı. **Henüz PUSH EDİLMEDİ.**
-- ⚠️ **İki bekleyen kullanıcı aksiyonu**: Firebase kurallarını Console'a yapıştırmak +
-  push onayı. Bunlar olmadan TSP/Oil teslimleri canlıda 401 döner.
+- Site iki oyunlu: **Slick Oil** (min-cost flow) + **TSP** (gezgin satıcı, 20/40/60 durak).
+- TSP büyütüldü ve MIP ile kesin çözüldü. Yerelde tamamlandı, CDP ile doğrulandı.
+- **Bu oturumdaki TSP-büyütme değişiklikleri henüz PUSH EDİLMEDİ.** (Önceki TSP altyapısı
+  — Aşama A/B/C, 6/12/18 senaryolar — push edilmişti; bu oturum onları 20/40/60 ile değiştirdi.)
 
-## Bu oturumda yapılanlar
+## Bu oturumda yapılanlar (TSP yeniden tasarım)
 
-**TSP verisi + ispat** (`tsp-scenarios.js`, `tools/tsp-lib.mjs`, `tools/tsp-solve.mjs`):
-6/12/18 şehir, optimumlar 190/293/334 km, üç bağımsız kesin yöntemle (Held–Karp DP,
-dal-sınır, kaba kuvvet) kanıtlandı. Held–Karp alt sınırı = optimum (sertifika). İspat
-aracı hikâye metnindeki her sayıyı veriden doğrular.
+**Sorun:** Küçük görsel Euclidean TSP (6/12/18) ders amacına ters — öğrencinin 2-opt
+sezgisi tam optimali buluyordu (%0.0, ölçüldü). Knapsack de küçükte kolay (%0.1).
 
-**Problem modülü mimarisi** (3 aşama, her biri commit'li):
-- A: `problems.js` — kabuk `PROBLEM.*` üzerinden çalışır, oil davranışı bit-for-bit korundu.
-- B: `tsp-network.js` + TSP kontrol çubuğu (Geri al/Temizle) + i18n `tsp.*` namespace.
-- C: panelde Oil/TSP seçici + `scores/<problem>/rN` + `state.problem` + iki ayrı klasman.
+**Çözüm:** TSP'yi büyüt (20/40/60 durak, elle imkânsız), noktaları uniform dağıt,
+her instance'ı sezgi-direnci ölçerek seç. Gerçekçi öğrenci gap'i %3.9/%7.7/%10.4.
 
-`scenarios.js` `evaluate`'ine `demand` eklendi (iki problem aynı şekil). Güvenlik
-kuralları `scores/<problem>/$round`'a güncellendi.
+**MIP çözücü** (kullanıcı önerisi): `tools/tsp-mip-solve.py` (PuLP+CBC, DFJ alt-tur
+eleme). n=100'ü ~40sn'de kesin çözer. Optimumlar 4357/5661/6624 km. Held–Karp DP bu
+boyutta imkânsız (2ⁿ). MIP=DP küçük referansta doğrulandı (formülasyon güveni).
+
+**Değişen dosyalar:** tsp-scenarios.js (yeni büyük instance'lar), tsp-network.js
+(bounding-box ölçekleme, telefon için çakışmasız daire/hit), tools/tsp-lib.mjs (twoOpt,
+upperBound), tools/tsp-solve.mjs (alt/üst sınır çerçevesi), tools/tsp-mip-solve.py (yeni),
+problems.js (tsp durations/demand), style.css (tsp var ölçekleme), docs.
 
 ## Test durumu (hepsi geçti)
 
-CDP gerçek tarayıcı, Firebase'e yazmadan: Oil submit 17, boru 9, sandbox 27, gap 16;
-TSP oyunu 21; problem geçişi 15; namespace 7. Node: senaryo/optimallik ispatları,
-`verify-i18n` (namespace-aware). Test scriptleri `scratchpad`'de (repoda değil).
+CDP gerçek tarayıcı, Firebase'e yazmadan: oil 69 (submit 17 + boru 9 + sandbox 27 + gap 16),
+tsp oyun 14, panel switch 15, namespace 7 = 105 kontrol. Node: verify-scenarios,
+solve-optimal, tsp-solve (alt≤opt≤üst her turda), verify-i18n. Test scriptleri scratchpad'de.
 
-## Bekleyen kullanıcı aksiyonları (SONRAKİ ADIM)
+## Bekleyen kullanıcı aksiyonu
 
-1. **Firebase kuralları.** `database.rules.json` içeriğini Firebase Console → Realtime
-   Database → Rules'a yapıştırıp Publish. Yeni şema `scores/<problem>/$round`. Eski
-   kurallar yeni yola yazmayı 401'ler. Publish sonrası REST testiyle doğrulanmalı.
-2. **Push.** Kod local'de commit'li. Kullanıcı onayıyla `git push`. Push + kurallar
-   yapıştırılınca canlı site iki oyunlu olur.
+- **Push.** Kod local'de commit'li. Kullanıcı onayıyla `git push`. Firebase kuralları
+  (scores/<problem>) ZATEN yayında (önceki oturumda) — TSP büyütme kural değiştirmez,
+  yalnızca kod. Yani bu sefer sadece push + Pages doğrulama gerekir.
 
-## Bilinen sınırlar
+## Bilinen sınırlar / kararlar
 
-- Tek-teslim kuralı istemci tarafında (panel "ilk teslim geçerli" ile etkisizleştirir).
-- `revealedRounds` ve deneme alanı çözümleri panelin `localStorage`/belleğinde — başka
-  makinede panel açılırsa klasman yeniden kilitli görünür.
-- TSP status başlığı "6 cities" der (depo dahil); hikâye "5 wells" der. Küçük, kabul edildi.
-- Aynı takma adı iki öğrenci kullanırsa skorları birleşir (problem başına).
+- TSP telefonda oynanabilir: daire/hit en yakın çifte bağlı, çakışmıyor. Birkaç yakın
+  çift (uniform jitter) sıkışık ama Undo var. Poisson-disk daha iyi olurdu, atlandı.
+- MIP: geliştirme-zamanı aracı (Python+CBC). Site bağımlısız kalır.
+- `tools/tsp-lib.mjs` Held–Karp DP artık yalnızca küçük-referans cross-check için (ADR-009).
+- Tek-teslim, iki klasman, i18n namespace: önceki oturumdan; değişmedi.
 
-## Ders akışı notu
+## Ders akışı
 
-İki oyun aynı derste ~70+ dk. Panelde önce Oil (3 tur), sonra TSP seçip (3 tur). Her
-problemin kendi genel klasmanı; "dersin tek galibi" yoktur.
+Panelde önce Slick Oil (3 tur), sonra TSP seç (3 tur). Her problemin kendi klasmanı.
+TSP mesajı: küçük rotada sen de yaklaşırsın; büyüdükçe çaresizleşirsin; MIP çözücü
+177 haneli uzayı bile saniyede KESİN çözer. Yöneylem Araştırması bunun için var.

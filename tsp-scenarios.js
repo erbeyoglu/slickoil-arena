@@ -1,102 +1,111 @@
 // Slick Oil Arena — Gezgin Satıcı Problemi (TSP) senaryoları
 //
-// Hikâye Slick Oil evreninde geçer: bakım ekibi depodan çıkar, her kuyuyu tam bir kez
-// ziyaret eder ve depoya döner. Amaç en kısa turu bulmaktır. Mesafe birimi km.
+// Bakım ekibi depodan (0. şehir) çıkar, her durağı tam bir kez ziyaret eder, döner.
+// Amaç en kısa tur. Mesafe: TSPLIB EUC_2D → round(sqrt(dx²+dy²)), tamsayı.
 //
-// Mesafe: TSPLIB EUC_2D standardı → round(sqrt(dx² + dy²)). Tamsayıdır; yuvarlama
-// belirsizliği yoktur ve optimum kesin bir tamsayıdır.
+// Boyutlar büyüktür (20/40/60) ki öğrenci el ile optimumu bulamasın — asıl ders bu.
+// Noktalar UNIFORM dağıtılmıştır (jittered grid): kümelenme yok, «dıştan dolaş»
+// sezgisi zayıflar. Her instance öğrenci sezgisine (2-opt) karşı direnci ÖLÇÜLEREK
+// seçilmiştir.
 //
-// Optimumlar ÜÇ BAĞIMSIZ KESİN yöntemle doğrulanmıştır (bkz. tools/tsp-solve.mjs):
-//   1. Held–Karp dinamik programlama  — O(2ⁿ·n²), kesin
-//   2. Dal-sınır (MST alt sınırı ile) — kesin, tamamen farklı kod yolu
-//   3. Kaba kuvvet                    — yalnızca n = 6 için (60 tur)
-// Ayrıca Held–Karp ALT SINIRI (1-tree + Lagrange gevşetmesi) üç senaryoda da optimuma
-// eşittir; bu, çözücünün doğruluğundan bağımsız bir optimallik sertifikasıdır.
-//
-// UYARI: "Held–Karp" iki ayrı şeyin adıdır. Yukarıdaki (1) KESİN bir dinamik
-// programlamadır. "Held–Karp sınırı" ise bir ALT SINIRDIR ve sezgisellerin/dal-sınırın
-// içinde kullanılır; tek başına optimum vermez. Burada ikisi de, ayrı amaçlarla kullanılır.
-//
-// Turların tamamı için tur sayısı = (n−1)! / 2  (depo sabit, ayna turları aynı sayılır).
+// Optimumlar bir MIP ÇÖZÜCÜ ile KESİN çözülmüştür (PuLP + CBC, DFJ alt-tur eleme).
+// Held-Karp DP bu boyutta imkânsızdır (2ⁿ). Doğrulama: tools/tsp-solve.mjs.
 
 const TSP_SCENARIOS = {
   1: {
     key: "r1",
-    title: "Tur 1 — Bakım Turu",
-    title_en: "Round 1 — Maintenance Run",
-    story: "Bakım ekibi depodan (D) çıkacak, 5 kuyunun her birine tam bir kez uğrayacak ve depoya dönecek. Kuyulara ziyaret sırasına göre dokun. En kısa turu bulabilir misin?",
-    story_en: "The maintenance crew leaves the depot (D), visits each of the 5 wells exactly once, and returns. Tap the wells in the order you want to visit them. Can you find the shortest tour?",
-    // [x, y] — 0..100 ızgarası. 0. şehir DEPODUR.
-    cities: [[71, 48], [68, 81], [53, 33], [73, 12], [22, 44], [43, 56]],
-    tours: "60",
+    title: "Tur 1 — Küçük Rota",
+    title_en: "Round 1 — Small Route",
+    story: "20 durak. Bakım ekibi depodan (D) çıkıp hepsini gezip dönecek. Bu boyutta el ile iyi bir tur bulabilirsin — dene, sonraki turlarda ne olacağını gör.",
+    story_en: "20 stops. The crew leaves the depot (D), visits them all, returns. At this size you can find a good tour by hand — try it, then see what happens in the next rounds.",
+    cities: [
+      [143,350], [918,377], [52,903], [468,539], [439,141], [33,85],
+      [949,854], [311,451], [755,554], [919,692], [511,899], [80,688],
+      [334,122], [324,584], [917,122], [669,832], [646,462], [469,308],
+      [252,859], [726,140]
+    ],
+    tours: "6×10¹⁶ (17 haneli)",
+    tours_en: "6×10¹⁶ (17 digits)",
     optimal: {
-      cost: 190,
-      tour: [0, 3, 2, 4, 5, 1],
-      note: "Tek bir optimal tur var: D→3→2→4→5→1→D. Açgözlü strateji (\"hep en yakın kuyuya git\") 233 km'de kalır — optimumdan %22.6 uzak. Yalnızca 60 farklı tur olduğu için el ile bulunabilir. Asıl mesele sonraki turda.",
-      note_en: "There is exactly one optimal tour: D→3→2→4→5→1→D. The greedy strategy (\"always go to the nearest well\") stalls at 233 km — 22.6% above the optimum. With only 60 possible tours you can find it by hand. The real lesson comes next round."
+      cost: 4357,
+      tour: [0, 5, 12, 4, 17, 19, 14, 1, 16, 8, 9, 6, 15, 10, 18, 2, 11, 13, 3, 7],
+      note: "Bu boyutta el ile optimuma yaklaşabilirsin («dıştan git, yolları kesiştirme» sezgisi iyi çalışır). Açgözlü strateji (hep en yakın durağa git) 5375 km'de kalır — optimumdan %23.4 uzak. Asıl fark sonraki turlarda ortaya çıkar.",
+      note_en: "At this size you can get close to the optimum by hand (the «go around the outside, don't cross paths» instinct works well). The greedy strategy (always go to the nearest stop) stalls at 5375 km — 23.4% above the optimum. The real gap shows up in later rounds."
     },
-    greedy: { cost: 233 }
+    greedy: { cost: 5375 }
   },
-
   2: {
     key: "r2",
-    title: "Tur 2 — Saha Genişledi",
-    title_en: "Round 2 — The Field Grew",
-    story: "Saha büyüdü: 11 kuyu. Tur sayısı 60'tan 20 milyona çıktı. Sezgin hâlâ işe yarıyor mu?",
-    story_en: "The field has grown: 11 wells. The number of possible tours jumped from 60 to 20 million. Does your intuition still hold?",
-    cities: [[90, 74], [9, 74], [28, 58], [51, 18], [76, 58], [76, 41], [42, 76], [61, 82], [36, 42], [87, 22], [21, 25], [16, 92]],
-    tours: "19.958.400",
+    title: "Tur 2 — Büyüyen Saha",
+    title_en: "Round 2 — Growing Field",
+    story: "40 durak. Tur sayısı 47 haneli bir sayıya çıktı. El ile en iyisini bulmak artık çok zor — süren yeter mi?",
+    story_en: "40 stops. The number of tours is now a 47-digit number. Finding the best by hand is very hard now — will your time be enough?",
+    cities: [
+      [198,772], [71,934], [825,426], [321,365], [687,248], [326,302],
+      [507,110], [680,558], [485,294], [606,114], [174,105], [520,802],
+      [534,417], [41,542], [217,584], [885,797], [72,773], [43,220],
+      [736,898], [190,907], [630,955], [967,45], [632,377], [802,638],
+      [327,781], [908,526], [812,731], [895,909], [44,72], [923,407],
+      [365,892], [888,201], [603,752], [200,452], [500,940], [833,32],
+      [308,41], [774,258], [238,232], [546,525]
+    ],
+    tours: "10⁴⁶ (47 haneli)",
+    tours_en: "10⁴⁶ (47 digits)",
     optimal: {
-      cost: 293,
-      tour: [0, 7, 6, 11, 1, 2, 8, 10, 3, 9, 5, 4],
-      note: "19.958.400 farklı tur var. Bir insan için imkânsız; bir bilgisayar için, saniyede bir milyon tur denerse, yalnızca 20 saniye. Açgözlü strateji 384 km'de kalır (%31.1 sapma). Şehir sayısı biraz daha artınca ne olduğunu sonraki turda göreceğiz.",
-      note_en: "There are 19,958,400 distinct tours. Impossible for a human; for a computer testing a million tours per second, just 20 seconds. The greedy strategy stalls at 384 km (31.1% off). Next round we will see what happens when the city count grows a little more."
+      cost: 5661,
+      tour: [0, 19, 1, 16, 13, 14, 33, 3, 5, 38, 17, 28, 10, 36, 6, 9, 35, 21, 31, 37, 4, 22, 8, 12, 39, 7, 2, 29, 25, 23, 26, 15, 27, 18, 20, 32, 11, 34, 30, 24],
+      note: "El ile çizilen turlar tipik olarak optimumun %8-15 üstünde kalır; açgözlü strateji 7193 km (%27.1 sapma). Bu boyutta «kesişmeleri kaldırma» sezgisi bile optimumu garanti etmez. Bir MIP çözücü optimumu saniyeler içinde KESİN bulur.",
+      note_en: "Hand-drawn tours typically stay 8-15% above the optimum; the greedy strategy hits 7193 km (27.1% off). At this size even the «remove crossings» instinct does not guarantee the optimum. A MIP solver finds the exact optimum in seconds."
     },
-    greedy: { cost: 384 }
+    greedy: { cost: 7193 }
   },
-
   3: {
     key: "r3",
-    title: "Tur 3 — Bütün Saha",
-    title_en: "Round 3 — The Whole Field",
-    story: "17 kuyu. Sadece 6 kuyu eklendi — ama tur sayısı 20 milyondan 177 trilyona çıktı. Yine de en iyisini bulmaya çalış.",
-    story_en: "17 wells. Only six more than last round — yet the number of tours went from 20 million to 177 trillion. Try to find the best one anyway.",
-    cities: [[64, 78], [71, 12], [43, 37], [14, 86], [76, 64], [35, 69], [56, 43], [79, 32], [82, 78], [88, 63], [23, 23], [67, 31], [63, 91], [9, 42], [83, 90], [85, 48], [39, 81], [18, 59]],
-    tours: "177.843.714.048.000",
+    title: "Tur 3 — Bütün Ağ",
+    title_en: "Round 3 — The Whole Network",
+    story: "60 durak. Olası tur sayısı 80 haneli — gözlemlenebilir evrendeki atom sayısı kadar. El ile en iyisini bulmak imkânsız. Yine de en iyi turunu çizmeye çalış.",
+    story_en: "60 stops. The number of possible tours has 80 digits — as many as the atoms in the observable universe. Finding the best by hand is impossible. Try your best tour anyway.",
+    cities: [
+      [82,845], [793,49], [845,530], [585,277], [204,205], [101,92],
+      [562,36], [281,815], [813,274], [347,313], [455,662], [40,269],
+      [673,792], [305,551], [466,221], [909,53], [283,201], [479,536],
+      [460,420], [894,585], [423,283], [681,539], [54,932], [555,820],
+      [794,777], [651,278], [439,50], [839,937], [80,729], [524,645],
+      [531,427], [818,458], [299,478], [144,591], [162,345], [896,728],
+      [835,230], [319,659], [978,807], [151,821], [312,935], [532,529],
+      [194,933], [529,932], [832,706], [934,428], [925,913], [161,57],
+      [153,707], [205,447], [645,175], [56,526], [478,834], [937,205],
+      [411,913], [689,83], [325,19], [697,723], [583,224], [104,163]
+    ],
+    tours: "7×10⁷⁹ (80 haneli)",
+    tours_en: "7×10⁷⁹ (80 digits)",
     optimal: {
-      cost: 334,
-      tour: [0, 16, 5, 3, 17, 13, 10, 2, 6, 11, 1, 7, 15, 9, 4, 8, 14, 12],
-      note: "Geçen turda 6 kuyu daha az vardı ve kaba kuvvet 20 saniye sürüyordu. Şimdi 177.843.714.048.000 tur var: aynı bilgisayar 5,6 YIL çalışır. Açgözlü strateji 427 km'de kalır (%27.8 sapma). Held–Karp dinamik programlaması ise aramayı 2ⁿ·n²'ye indirir (85 milyon işlem) ve optimumu çeyrek saniyede bulur. Üstel bir uzayı taramakla, o uzayı kırmak aynı şey değildir. Yöneylem Araştırması bunun için var.",
-      note_en: "Last round had six fewer wells and brute force took 20 seconds. Now there are 177,843,714,048,000 tours: the same computer would run for 5.6 YEARS. The greedy strategy stalls at 427 km (27.8% off). Held–Karp dynamic programming shrinks the search to 2ⁿ·n² (85 million operations) and finds the optimum in a quarter of a second. Searching an exponential space and breaking it are not the same thing. That is what Operations Research is for."
+      cost: 6624,
+      tour: [0, 22, 42, 7, 40, 54, 43, 52, 23, 12, 57, 24, 27, 46, 38, 35, 44, 19, 2, 31, 45, 8, 36, 53, 15, 1, 55, 6, 26, 56, 47, 5, 59, 11, 34, 4, 16, 9, 20, 14, 58, 50, 25, 3, 30, 18, 17, 41, 21, 29, 10, 37, 13, 32, 49, 51, 33, 48, 28, 39],
+      note: "80 haneli tur sayısı: saniyede bir trilyon tur deneyen bir bilgisayar bile evrenin yaşının katrilyonlarca katı sürede bitiremez. Ama bu KABA KUVVET. Bir MIP çözücü (dal-kesme + alt tur eleme) aynı optimumu saniyeler içinde KESİN bulur — çünkü akıllı arama, körü körüne saymaktan farklıdır. Açgözlü 8634 km (%30.3). Yöneylem Araştırması tam da bunun için var.",
+      note_en: "An 80-digit tour count: even a computer testing a trillion tours per second could not finish in quadrillions of times the age of the universe. But that is BRUTE FORCE. A MIP solver (branch-and-cut + subtour elimination) finds the same optimum in seconds, EXACTLY — because smart search is not blind counting. Greedy 8634 km (30.3%). This is exactly what Operations Research is for."
     },
-    greedy: { cost: 427 }
+    greedy: { cost: 8634 }
   }
 };
 
 // Yardımcılar ------------------------------------------------------------
 
-// TSPLIB EUC_2D: tamsayı mesafe.
 function tspDist(scen, i, j) {
   const dx = scen.cities[i][0] - scen.cities[j][0];
   const dy = scen.cities[i][1] - scen.cities[j][1];
   return Math.round(Math.sqrt(dx * dx + dy * dy));
 }
 
-// Çözüm = ziyaret sırası. Depo (0) dizinin başındadır ve sonda tekrar EDİLMEZ;
-// tur tamamlandığında kapanış kenarı otomatik eklenir.
-// Örn. [0, 3, 2] → depo → 3 → 2 (henüz kapanmadı, kısmi tur).
 function tspEvaluate(scen, tour) {
   const n = scen.cities.length;
   const complete = tour.length === n && new Set(tour).size === n && tour[0] === 0;
-
   let cost = 0;
   for (let i = 0; i + 1 < tour.length; i++) cost += tspDist(scen, tour[i], tour[i + 1]);
-  if (complete) cost += tspDist(scen, tour[tour.length - 1], 0);   // depoya dön
-
+  if (complete) cost += tspDist(scen, tour[tour.length - 1], 0);
   return { cost, feasible: complete, delivered: tour.length, demand: n };
 }
 
-// Mesafe biçimi. Slick Oil'deki fmtMoney'nin karşılığı.
 function fmtDist(km) {
   const locale = typeof i18nLocale === "function" ? i18nLocale() : "tr-TR";
   return Math.round(km).toLocaleString(locale) + " km";

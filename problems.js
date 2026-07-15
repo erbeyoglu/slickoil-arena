@@ -70,7 +70,7 @@ const PROBLEMS = {
     key: "tsp",
     scenarios: typeof TSP_SCENARIOS !== "undefined" ? TSP_SCENARIOS : null,
     roundCount: 3,
-    durations: { 1: 4, 2: 5, 3: 7 },
+    durations: { 1: 3, 2: 4, 3: 5 },   // büyük turlar (20/40/60 şehir) daha çok süre ister
 
     evaluate: (scen, sol) => tspEvaluate(scen, sol),
     emptySolution: () => [0], // depo (0) her zaman turun başında
