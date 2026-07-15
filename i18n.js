@@ -68,6 +68,8 @@ const I18N = {
     // ---- hoca paneli
     "doc.title.host": "Slick Oil Arena — Hoca Paneli",
     "panel.subtitle": "/ hoca paneli",
+    "ctrl.probOil": "🛢 Slick Oil",
+    "ctrl.probTsp": "🗺 Gezgin Satıcı",
     "ctrl.round1": "Tur 1",
     "ctrl.round2": "Tur 2",
     "ctrl.round3": "Tur 3",
@@ -196,6 +198,8 @@ const I18N = {
     // ---- instructor panel
     "doc.title.host": "Slick Oil Arena — Instructor Panel",
     "panel.subtitle": "/ instructor panel",
+    "ctrl.probOil": "🛢 Slick Oil",
+    "ctrl.probTsp": "🗺 Traveling Salesman",
     "ctrl.round1": "Round 1",
     "ctrl.round2": "Round 2",
     "ctrl.round3": "Round 3",

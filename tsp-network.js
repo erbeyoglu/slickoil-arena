@@ -18,6 +18,7 @@ function renderTspNetwork(svgEl, scen, tour, ui, onTap) {
   svgEl.setAttribute("viewBox", `${-TSP_PAD} ${-TSP_PAD} ${VB} ${VB}`);
   svgEl.innerHTML = "";
   svgEl.classList.add("tsp");
+  svgEl.classList.remove("net-compact");  // aynı SVG önce oil çizmiş olabilir
 
   const NS = "http://www.w3.org/2000/svg";
   const el = (name, attrs, parent) => {

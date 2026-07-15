@@ -179,8 +179,8 @@ let submittedBest = JSON.parse(localStorage.getItem("soa_best") || "{}"); // sub
 function saveBest() { localStorage.setItem("soa_best", JSON.stringify(submittedBest)); }
 let timerId = null;
 
-// Tur başına teslim/koşu anahtarı. Aşama C'de PROBLEM.key ile namespace'lenecek.
-function subKey() { return scen.key; }
+// Tur başına teslim/koşu anahtarı — problem başına namespace (oil_r1 / tsp_r1).
+function subKey() { return PROBLEM.key + "_" + scen.key; }
 
 const $ = id => document.getElementById(id);
 const screens = ["sJoin", "sLobby", "sGame", "sResult"];
@@ -206,8 +206,17 @@ $("joinForm").addEventListener("submit", e => {
 // ---- Firebase durum dinleyici
 db.ref("state").on("value", snap => {
   const prev = gState();
-  gstateSet(snap.val() || { round: 1, phase: "lobby" });
-  if (!prev || prev.round !== gState().round || prev.phase !== gState().phase) route();
+  const st = snap.val() || { round: 1, phase: "lobby", problem: "oil" };
+  gstateSet(st);
+  // Problem değiştiyse aktif modülü ve dili güncelle.
+  const wantProblem = st.problem || "oil";
+  const problemChanged = wantProblem !== PROBLEM.key;
+  if (problemChanged) {
+    PROBLEM = PROBLEMS[wantProblem];
+    setProblem(wantProblem);
+    applyI18n();
+  }
+  if (problemChanged || !prev || prev.round !== st.round || prev.phase !== st.phase) route();
   syncTimer();
 });
 function gState() { return gstate_; }
@@ -225,14 +234,17 @@ function route() {
 
   if (s.phase === "live") {
     // aynı tur yeniden başlatıldıysa (yeni endsAt) eski teslimi unut.
-    // sol._round: çözümün hangi tura ait olduğu damgası (yanlış turdan taşımayı önler).
+    // sol._round / sol._problem: çözümün hangi tura VE probleme ait olduğu damgası
+    // (yanlış turdan ya da problemden — ör. oil r1 → tsp r1 — taşımayı önler).
     const runKey = "soa_run_" + subKey();
+    const stale = !sol._round || sol._round !== s.round || sol._problem !== PROBLEM.key;
     if (localStorage.getItem(runKey) !== String(s.endsAt)) {
       localStorage.setItem(runKey, String(s.endsAt));
       delete submittedBest[subKey()]; saveBest();
-      sol = PROBLEM.emptySolution(scen); sol._round = s.round; ui = PROBLEM.initialUi();
+      sol = PROBLEM.emptySolution(scen); sol._round = s.round; sol._problem = PROBLEM.key; ui = PROBLEM.initialUi();
+    } else if (stale) {
+      sol = PROBLEM.emptySolution(scen); sol._round = s.round; sol._problem = PROBLEM.key; ui = PROBLEM.initialUi();
     }
-    if (!sol._round || sol._round !== s.round) { sol = PROBLEM.emptySolution(scen); sol._round = s.round; ui = PROBLEM.initialUi(); }
     $("storyBox").innerHTML = `<strong class="display">${scenTitle(scen)}</strong><br>${scenStory(scen)}`;
     show("sGame");
     $("submitBar").style.display = "flex";
@@ -340,7 +352,7 @@ window.addEventListener("resize", () => {
 });
 
 // ---- teslim
-function scoresPath() { return "scores/" + scen.key; }  // Aşama C: scores/<problem>/rN
+function scoresPath() { return "scores/" + PROBLEM.key + "/" + scen.key; }
 
 $("submitBtn").addEventListener("click", () => {
   const s = gState();

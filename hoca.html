@@ -86,6 +86,9 @@
   <div class="topbar">
     <h1 class="display">SLICK OIL <span class="drop">ARENA</span> <span class="muted" style="font-size:18px" data-i18n="panel.subtitle"></span></h1>
     <div class="controls">
+      <div class="seg" id="problemSeg">
+        <button data-p="oil" data-i18n="ctrl.probOil"></button><button data-p="tsp" data-i18n="ctrl.probTsp"></button>
+      </div>
       <div class="seg" id="roundSeg">
         <button data-r="1" data-i18n="ctrl.round1"></button><button data-r="2" data-i18n="ctrl.round2"></button><button data-r="3" data-i18n="ctrl.round3"></button>
       </div>
@@ -239,9 +242,12 @@ const MISSING_ROUND_GAP = 100;
 // Açıklanmış turlar. WHY: uzaklık yüzdesi optimumu ele verir
 // (optimum = maliyet / (1 + uzaklık/100)). Bu yüzden bir turun uzaklıkları,
 // ancak o tur açıklandıktan sonra perdeye çıkabilir.
+// Problem başına ayrı tutulur (oil ve tsp klasmanları bağımsız).
 // Bu tanımlar ilk refreshAll() çağrısından ÖNCE gelmeli (temporal dead zone).
-const REVEALED_KEY = "soa_revealed";
-let revealedRounds = new Set(JSON.parse(localStorage.getItem(REVEALED_KEY) || "[]"));
+let revealedRounds = new Set();
+function revealedKey() { return "soa_revealed_" + PROBLEM.key; }
+function loadRevealed() { revealedRounds = new Set(JSON.parse(localStorage.getItem(revealedKey()) || "[]")); }
+loadRevealed();
 
 // ---- QR + link
 const joinUrl = location.href.replace(/hoca\.html.*$/, "");
@@ -275,6 +281,31 @@ document.querySelectorAll("details.sect").forEach(d => {
   });
 });
 
+// ---- problem seçimi (Oil / TSP)
+function paintProblemSeg() {
+  document.querySelectorAll("#problemSeg button").forEach(b => b.classList.toggle("act", b.dataset.p === PROBLEM.key));
+}
+// Aktif problemi değiştir (i18n, klasman geçmişi, skor aboneliği hepsi problem başına).
+function applyProblem(key) {
+  PROBLEM = PROBLEMS[key];
+  setProblem(key);
+  applyI18n();
+  loadRevealed();
+  scenDrawnFor = null;    // deneme alanı yeni problem için yeniden çizilsin
+  subscribeScores();      // scoresCache'i yeni problemin skorlarıyla doldurur (refreshAll tetikler)
+}
+function switchProblem(key) {
+  if (key === PROBLEM.key) return;
+  applyProblem(key);
+  paintProblemSeg();
+  paintSeg();
+  refreshAll();
+}
+document.querySelectorAll("#problemSeg button").forEach(b => {
+  b.addEventListener("click", () => switchProblem(b.dataset.p));
+});
+paintProblemSeg();
+
 // ---- tur seçimi
 document.querySelectorAll("#roundSeg button").forEach(b => {
   b.addEventListener("click", () => { uiRound = +b.dataset.r; paintSeg(); refreshAll(); });
@@ -298,11 +329,11 @@ refreshAll();
 // ---- kontroller
 $("btnStart").onclick = () => {
   const dur = Math.max(1, +$("durMin").value) * 60;
-  db.ref("state").set({ round: uiRound, phase: "live", duration: dur, endsAt: Date.now() + dur * 1000 });
+  db.ref("state").set({ problem: PROBLEM.key, round: uiRound, phase: "live", duration: dur, endsAt: Date.now() + dur * 1000 });
 };
 $("btnClose").onclick = () => db.ref("state").update({ phase: "closed" });
 $("btnReveal").onclick = () => db.ref("state").update({ phase: "reveal" });
-$("btnLobby").onclick = () => db.ref("state").set({ round: uiRound, phase: "lobby" });
+$("btnLobby").onclick = () => db.ref("state").set({ problem: PROBLEM.key, round: uiRound, phase: "lobby" });
 
 // Skor silme.
 //
@@ -321,13 +352,13 @@ $("btnWipe").onclick = () => {
 
   let job = null;
   if (tAll("wipe.allWord").includes(said)) {
-    job = Promise.all([1, 2, 3].map(r => db.ref("scores/r" + r).remove()));
+    job = Promise.all([1, 2, 3].map(r => db.ref("scores/" + PROBLEM.key + "/r" + r).remove()));
     // Yeni bir ders başlıyor: açıklama geçmişi de sıfırlanmalı, yoksa genel klasman
-    // boş skorlarla açık gelir.
+    // boş skorlarla açık gelir. (Yalnızca aktif problem için.)
     revealedRounds = new Set();
-    localStorage.removeItem(REVEALED_KEY);
+    localStorage.removeItem(revealedKey());
   } else if (tAll("wipe.roundWord").includes(said)) {
-    job = db.ref("scores/r" + uiRound).remove();
+    job = db.ref("scores/" + PROBLEM.key + "/r" + uiRound).remove();
   } else return;
 
   job.catch(err => alert(t("wipe.failed", { error: err && err.message ? err.message : String(err) })));
@@ -356,6 +387,13 @@ db.ref("state").on("value", snap => {
   state = snap.val();
   stateArrived = true;
 
+  // İlk yüklemede canlı bir tur varsa problemini de benimse (bayat state'e karşı
+  // shouldAdoptRound ile aynı mantık). Elle problem değiştirmeyi ezmesin diye
+  // yalnızca ilk anlık görüntüde.
+  if (shouldAdoptRound(firstSnapshot, state) && state.problem && state.problem !== PROBLEM.key) {
+    applyProblem(state.problem);
+    paintProblemSeg();
+  }
   if (shouldAdoptRound(firstSnapshot, state)) uiRound = state.round;
   paintSeg();
 
@@ -363,9 +401,21 @@ db.ref("state").on("value", snap => {
   syncTimer(); refreshAll();
 });
 
-["r1", "r2", "r3"].forEach(k => {
-  db.ref("scores/" + k).on("value", snap => { scoresCache[k] = snap.val() || {}; refreshAll(); });
-});
+// Skor aboneliği problem başınadır: scores/<problem>/rN. Problem değişince
+// eski dinleyiciler kapatılıp yenileri açılır (applyProblem → subscribeScores).
+let scoreSubs = [];
+function subscribeScores() {
+  scoreSubs.forEach(off => off());
+  scoreSubs = [];
+  scoresCache = { r1: {}, r2: {}, r3: {} };
+  ["r1", "r2", "r3"].forEach(k => {
+    const ref = db.ref("scores/" + PROBLEM.key + "/" + k);
+    const cb = snap => { scoresCache[k] = snap.val() || {}; refreshAll(); };
+    ref.on("value", cb);
+    scoreSubs.push(() => ref.off("value", cb));
+  });
+}
+subscribeScores();
 
 // ---- her isim için geçerli teslim
 //
@@ -390,7 +440,7 @@ function gapPct(cost, opt) { return 100 * (cost - opt) / opt; }
 function markRevealed(round) {
   if (revealedRounds.has(round)) return;
   revealedRounds.add(round);
-  localStorage.setItem(REVEALED_KEY, JSON.stringify([...revealedRounds]));
+  localStorage.setItem(revealedKey(), JSON.stringify([...revealedRounds]));
 }
 
 function refreshAll() {

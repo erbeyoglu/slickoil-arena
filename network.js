@@ -100,6 +100,7 @@ function layoutFlowTags(shown, g) {
 // onTap(li): hatta dokununca çağrılır (null → etkileşimsiz)
 function renderNetwork(svgEl, scen, flows, selectedLink, onTap) {
   const g = netGeometry(svgEl);
+  svgEl.classList.remove("tsp");  // aynı SVG önce TSP çizmiş olabilir
   svgEl.classList.toggle("net-compact", g === NET_COMPACT);
   const H = netHeight(scen, g);
   const ev = evaluate(scen, flows);
