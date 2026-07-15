@@ -43,6 +43,7 @@ const PROBLEMS = {
     emptySolution: (scen) => scen.links.map(() => 0),
     optimalSolution: (scen) => optimalFlowArray(scen),
     optimalCost: (scen) => scen.optimal.cost,
+    demand: (scen) => scen.demand,      // hedef teslimat (panel başlığı/hint)
     fmtCost: (x) => fmtMoney(x),
 
     render: (svg, scen, sol, ui, onTap) =>
@@ -75,6 +76,7 @@ const PROBLEMS = {
     emptySolution: () => [0], // depo (0) her zaman turun başında
     optimalSolution: (scen) => scen.optimal.tour,
     optimalCost: (scen) => scen.optimal.cost,
+    demand: (scen) => scen.cities.length,   // şehir sayısı (depo dahil)
     fmtCost: (x) => fmtDist(x),
 
     render: (svg, scen, sol, ui, onTap) =>

@@ -136,3 +136,45 @@ karar tablosu tarayıcıda doğrudan test edilir.
 **Sonuçları:** "Sayfa yüklenince Tur 1" beklentisi pratikte her zaman karşılanır;
 tek istisna, o anda gerçekten dönen bir turun olması — ki orada panelin ona
 kilitlenmesi zaten istenen davranıştır.
+
+---
+
+## ADR-007 — İkinci oyun tek kabuğa yedirildi (ayrı sayfa değil)
+
+**Tarih:** 2026-07-15
+**Durum:** Kabul edildi
+
+**Bağlam:** Slick Oil'in yanına TSP eklenecek. Aynı derste oynanacak.
+
+**Değerlendirilen seçenekler:**
+- Ayrı `tsp.html` / `tsp-hoca.html` sayfaları — Artı: izolasyon. Eksi: lobi, faz makinesi, sayaç, teslim akışı, tek-teslim kuralı, sıralama, i18n, güvenlik kuralları — hepsi ~%85 ortak — iki nüsha olur ve kaçınılmaz olarak birbirinden kayar.
+- Tek kabuk + "problem modülü" soyutlaması — Artı: ortak mantık tek kopya; tek genel klasman altyapısı (gap boyutsuz). Eksi: bir soyutlama katmanı.
+
+**Karar:** Tek kabuk. `problems.js` bir `ProblemModule` arayüzü tanımlar (evaluate,
+render, emptySolution, optimalSolution, fmtCost, onTap, controls, demand). `index.html`
+ve `hoca.html` kabuktur; aktif problemi `PROBLEM` değişkeninden okur.
+
+**Ölçüm:** Kabuk JS'inin ~%85'i probleme kayıtsız çıktı (ölçüldü). Refactor üç aşamada
+yapıldı (A: oil'i sarmala/davranış aynı, B: TSP modülü, C: seçici+namespace); her aşama
+CDP tarayıcı testleriyle Slick Oil davranışının değişmediğini kanıtladı.
+
+**Sonuçları:** Üçüncü bir problem eklemek = yeni bir `PROBLEMS.<key>` modülü + çizici +
+`tsp.*` benzeri i18n bloğu. Kabuk dokunulmaz.
+
+---
+
+## ADR-008 — Firebase namespace ve iki ayrı klasman
+
+**Tarih:** 2026-07-15
+**Durum:** Kabul edildi
+
+**Bağlam:** İki problem aynı `r1/r2/r3` tur anahtarlarını kullanıyor. Namespace olmadan
+TSP r1 teslimi, Oil r1'in `scores/r1` düğümüne ve tek-teslim kilidine karışır.
+
+**Karar:** Her şey problem başına isimlendirildi: `scores/<problem>/rN`, `state.problem`,
+`localStorage` öneki `oil_r1`/`tsp_r1`, `soa_revealed_<problem>`. Genel klasman da problem
+başınadır (kullanıcı kararı: birleşik 6-tur klasmanı değil, iki ayrı klasman).
+
+**Sonuçları:** Güvenlik kuralları `scores/$problem/$round` derinliğine güncellendi.
+Öğrenci bir problemi teslim etse de diğerini oynayabilir (kilitler bağımsız). "Dersin
+en iyisi" diye tek kişi yoktur; her oyunun kendi şampiyonu olur.

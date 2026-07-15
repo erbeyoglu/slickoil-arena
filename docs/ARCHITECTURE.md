@@ -34,8 +34,37 @@ dosyaları servis eder; tek dinamik bileşen Firebase Realtime Database'dir.
 | `network.js` | SVG ağ çizici. Oyun, hoca deneme alanı ve optimal açıklaması aynı çiziciyi kullanır. |
 | `style.css` | Tasarım sistemi (renk değişkenleri, kart, buton, ağ stilleri). |
 | `i18n.js` | TR/EN sözlüğü ve `t()`, `applyI18n()`, `scenTitle/scenStory/scenNote` yardımcıları. |
-| `database.rules.json` | Güvenlik kuralları; Console'a yapıştırılan sürümün kaynağıdır. |
-| `tools/verify-scenarios.mjs` | Senaryo verisi bütünlük testi. |
+| `problems.js` | **Problem modülü soyutlaması.** `PROBLEMS.oil` / `PROBLEMS.tsp`; kabuk probleme özgü her şeyi buradan okur. |
+| `tsp-scenarios.js` | TSP senaryo verisi + `tspEvaluate` + `fmtDist`. |
+| `tsp-network.js` | TSP tur çizici (`renderTspNetwork`, renderNetwork ile aynı imza). |
+| `database.rules.json` | Güvenlik kuralları (`scores/$problem/$round`); Console'a yapıştırılan sürümün kaynağı. |
+| `tools/verify-scenarios.mjs` / `solve-optimal.mjs` | Oil senaryo tutarlılığı / optimallik ispatı. |
+| `tools/tsp-solve.mjs` | TSP optimum ispatı (üç kesin yöntem) + hikâye sayısı doğrulaması. |
+| `tools/verify-i18n.mjs` | TR/EN sözlük bütünlüğü (namespace-aware). |
+
+## İki problem: modül soyutlaması
+
+Site iki oyunu tek kabukta barındırır (bkz. DECISIONS ADR-007). `index.html` ve
+`hoca.html` **kabuktur**; probleme özgü her şeyi bir `PROBLEM` modülünden okur:
+
+```
+PROBLEM = PROBLEMS[state.problem]   // "oil" | "tsp"
+  .evaluate(scen, sol)   → {cost, feasible, delivered, demand}
+  .render(svg, scen, sol, ui, onTap) → ev   (oil: renderNetwork, tsp: renderTspNetwork)
+  .emptySolution / optimalSolution / optimalCost / demand / fmtCost
+  .onTap(scen, sol, ui, i) → {sol, ui}   (oil: boru seç; tsp: şehir ekle)
+  .controls.kind         "flow" (oil pipeBar) | "sequence" (tsp Geri al/Temizle)
+```
+
+`sol` = çözüm (oil: link→akış dizisi; tsp: şehir sırası). Her ikisinin `evaluate`'i
+aynı şekli döndürür, bu yüzden teslim/klasman/gap mantığı probleme kayıtsızdır.
+
+**Namespace (ADR-008):** `scores/<problem>/rN`, `state.problem`, `localStorage` öneki
+`oil_r1`/`tsp_r1`, `soa_revealed_<problem>`. İki oyunun skorları, tek-teslim kilitleri
+ve klasmanları bağımsızdır.
+
+**i18n:** `t()` önce `<problem>.<key>` dener, yoksa çıplak anahtara düşer. Çıplak
+anahtarlar oil metnini taşır; yalnızca `tsp.*` varyantları eklenmiştir.
 
 ## Durum makinesi
 

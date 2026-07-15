@@ -13,7 +13,13 @@ orijinal web versiyonu Rémi Lequette tarafından yazılmıştır: https://slick
 
 > Hoca paneli adresini paylaşmayın: tur başlatma/kapatma ve skor sıfırlama yetkisi kimlik doğrulaması istemez.
 
-## Turlar
+Site **iki optimizasyon oyunu** barındırır; hoca panelinden seçilir ve öğrenciler
+telefonda otomatik olarak aktif oyuna geçer.
+
+## Problem 1 — Slick Oil (min-cost flow)
+
+Bakım/tedarik ağında müşteriye en düşük maliyetle varil ulaştırma. Öğrenci boruya
+dokunup akışı ayarlar.
 
 | Tur | Senaryo | Ağ | Talep | Optimal | Açgözlü tuzağı |
 |---|---|---|---|---|---|
@@ -22,17 +28,34 @@ orijinal web versiyonu Rémi Lequette tarafından yazılmıştır: https://slick
 | 3 — Büyüme | Yeni saha | 10 kuyu × 8 rafineri, 34 hat | 250 | **$1245** | $1475 (%18.5) |
 
 Tüm optimumlar LP (min-cost flow) ile doğrulanmıştır; akışlar 10'luk adımlarla
-seçildiği için optimum oyun içinde erişilebilirdir (transportation polytope'un
-tam birimsel yapısı sayesinde).
+seçildiği için optimum oyun içinde erişilebilirdir.
+
+## Problem 2 — Gezgin Satıcı / TSP
+
+Bakım ekibi depodan çıkıp her kuyuyu tam bir kez ziyaret edip döner; amaç en kısa
+tur. Öğrenci şehirlere ziyaret sırasına göre dokunur (Geri al / Temizle ile düzeltir).
+
+| Tur | Şehir | Tur sayısı | Optimal | Açgözlü (en yakın komşu) |
+|---|---|---|---|---|
+| 1 — Bakım Turu | 6 | 60 | **190 km** | 233 km (%22.6) |
+| 2 — Saha Genişledi | 12 | 19.958.400 | **293 km** | 384 km (%31.1) |
+| 3 — Bütün Saha | 18 | 177.843.714.048.000 | **334 km** | 427 km (%27.8) |
+
+Mesafeler TSPLIB EUC_2D (tamsayı). Optimumlar **üç bağımsız kesin yöntemle** kanıtlanmıştır:
+Held–Karp dinamik programlama (`O(2ⁿ·n²)`), dal-sınır, ve kaba kuvvet (n=6).
+Held–Karp alt sınırı (1-tree + Lagrange) üçünde de optimuma eşittir — çözücüden
+bağımsız optimallik sertifikası. Punchline: Tur 2'de kaba kuvvet bir bilgisayar için
+~20 saniye, Tur 3'te (sadece 6 şehir fazla) ~5,6 YIL; DP ise çeyrek saniyede çözer.
 
 ## Dosyalar
 
-- `index.html` — öğrenci oyunu (telefon öncelikli). QR ile girilir.
-- `hoca.html` — projektör paneli: tur başlat/kapat, canlı sıralama, histogram, optimal açıklama, genel klasman.
-- `scenarios.js` — senaryo verileri + önceden çözülmüş optimumlar.
-- `network.js` — ortak SVG ağ çizici.
+- `index.html` — öğrenci oyunu (telefon öncelikli). QR ile girilir; aktif problemi otomatik takip eder.
+- `hoca.html` — projektör paneli: **problem seçici (Oil/TSP)**, tur başlat/kapat, canlı sıralama, histogram, optimal açıklama, genel klasman.
+- `problems.js` — problem modülü soyutlaması. Kabuk (index/hoca) probleme özgü her şeyi `PROBLEMS.oil` / `PROBLEMS.tsp` modülünden okur.
+- `scenarios.js` / `tsp-scenarios.js` — iki oyunun senaryo verileri + önceden çözülmüş optimumları.
+- `network.js` / `tsp-network.js` — Oil ağ çizici / TSP tur çizici (aynı imza).
 - `style.css` — tasarım sistemi.
-- `i18n.js` — TR/EN sözlüğü. Arayüzün tamamı iki dillidir; sağ üstteki düğmeyle değişir.
+- `i18n.js` — TR/EN sözlüğü. Arayüzün tamamı iki dillidir; sağ üstteki düğmeyle değişir. `t()` problem-aware.
 - `firebase-config.js` — Firebase yapılandırması (istemci tarafı; gizli değil).
 - `database.rules.json` — Realtime Database güvenlik kuralları (Console'a yapıştırılan sürümün kaynağı).
 - `favicon.svg` — petrol damlası simgesi.
@@ -50,9 +73,9 @@ Kuralların özeti:
 
 | Yol | İzin |
 |---|---|
-| `state` | Herkes okur ve yazar — hoca paneli tur durumunu buradan sürer. |
-| `scores/$round` okuma | Herkes leaderboard'u okur. |
-| `scores/$round` yazma | Yalnızca **yeni skor ekleme** ve **silme**. Var olan bir skor değiştirilemez. |
+| `state` | Herkes okur ve yazar — hoca paneli tur+problem durumunu buradan sürer. |
+| `scores/$problem/$round` okuma | Herkes leaderboard'u okur. |
+| `scores/$problem/$round` yazma | Yalnızca **yeni skor ekleme** ve **silme**. Var olan bir skor değiştirilemez. |
 | `.validate` | `name` string ≤ 18 karakter, `cost` pozitif sayı, `timeSec` sayı. |
 
 > **Neden silmeye izin var?** Hoca panelindeki "Skorları sıfırla" butonu `scores/rN`
@@ -96,7 +119,7 @@ Sitede build adımı yoktur: `main`'e push, birkaç dakika içinde yayına çık
   Yalnızca tam teslimatlı, kapasiteleri aşmayan çözümler gönderilebilir.
 - **Optimuma uzaklık (gap)** = `100 × (maliyet − optimal) / optimal`. Sıfır = optimal.
 - **Genel klasman** = üç turun uzaklık **ortalaması**, küçükten büyüğe. Teslim edilmeyen
-  tur **%100** uzaklık sayılır.
+  tur **%100** uzaklık sayılır. **Her problemin kendi klasmanı vardır** (Oil ve TSP ayrı).
 - Tur puanı (`round(1000 × optimal / maliyet)`) yalnızca bilgi amaçlı gösterilir;
   sıralamayı artık belirlemez.
 
@@ -118,8 +141,10 @@ Sitede build adımı yoktur: `main`'e push, birkaç dakika içinde yayına çık
 Bağımlılık yok, build yok. İki ayrı script, iki ayrı iş yapar:
 
 ```bash
-node tools/verify-scenarios.mjs   # beyan edilen çözüm tutarlı mı?
-node tools/solve-optimal.mjs      # beyan edilen çözüm gerçekten OPTİMAL mi?
+node tools/verify-scenarios.mjs   # Oil: beyan edilen çözüm tutarlı mı?
+node tools/solve-optimal.mjs      # Oil: beyan edilen çözüm gerçekten OPTİMAL mi?
+node tools/tsp-solve.mjs          # TSP: optimum + hikâye sayıları (üç kesin yöntem)
+node tools/verify-i18n.mjs        # TR/EN sözlük bütünlüğü (namespace-aware)
 ```
 
 **`verify-scenarios.mjs`** yalnızca tutarlılığa bakar: `optimal.flows` akışı talebi

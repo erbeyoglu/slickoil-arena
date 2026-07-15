@@ -1,5 +1,42 @@
 # Changelog
 
+## [2026-07-15] — İkinci oyun: Gezgin Satıcı (TSP) + problem modülü mimarisi
+
+**Ne değişti:** Site artık iki optimizasyon oyunu barındırıyor. Hoca panelinde Oil/TSP
+seçici; öğrenci telefonda aktif oyuna otomatik geçiyor. TSP: 6 / 12 / 18 şehir, öğrenci
+şehirlere sırayla dokunuyor (Geri al / Temizle).
+
+Mimari üç aşamada kuruldu:
+- **A — problem modülü soyutlaması** (`problems.js`): `index.html` ve `hoca.html`
+  probleme özgü her şeyi `PROBLEMS.oil` / `PROBLEMS.tsp` modülünden okur (evaluate,
+  render, emptySolution, optimalSolution, fmtCost, onTap, controls). Kabuk davranışı
+  bit-for-bit korundu.
+- **B — TSP çizici + kontrol çubuğu + i18n namespace**: `tsp-network.js` (şehir tıklama,
+  sıra numaraları, kısmi tur), `t()` problem-aware (`<problem>.<key>`), TSP metinleri.
+- **C — problem seçici + Firebase namespace**: `scores/<problem>/rN`, `state.problem`,
+  `localStorage` öneki `oil_`/`tsp_`, `revealedRounds` problem başına. İki oyunun
+  skorları, tek-teslim kilitleri ve klasmanları bağımsız (ADR-006, kullanıcı kararı).
+
+TSP optimumları (190 / 293 / 334 km) üç bağımsız kesin yöntemle kanıtlandı: Held–Karp
+dinamik programlama, dal-sınır, kaba kuvvet (n=6). Held–Karp alt sınırı üçünde de
+optimuma eşit → çözücüden bağımsız sertifika. `tools/tsp-solve.mjs` hikâye metnindeki
+her sayıyı (tur sayısı, açgözlü maliyet, gap) veriden doğrular.
+
+**Neden:** Slick Oil'in punchline'ı "sezgi yanılır, LP çözer". TSP daha güçlü: NP-zor.
+6 şehir eklemek arama uzayını 20 milyondan 177 trilyona çıkarır (kaba kuvvet 20 sn → 5,6
+yıl), DP ise saniyenin altında çözer. Gap boyutsuz olduğu için puanlama iki oyunda da aynı.
+
+**Etkisi:** `scenarios.js`'e `evaluate` dönüşüne `demand` eklendi (tspEvaluate ile aynı
+şekil; feasible/puanlama değişmedi). Senaryo verileri, Oil optimumları ve puanlama
+formülü değişmedi. **Güvenlik kuralları `scores/<problem>/$round`'a göre güncellendi**
+(Console'a yeniden yapıştırılmalı).
+
+**Doğrulama:** CDP gerçek tarayıcı testleri — Oil regresyon (submit/boru/sandbox/gap 90
+kontrol), TSP oyunu 21, problem geçişi 15, namespace ayrışması 7. i18n bütünlüğü
+namespace-aware (`tools/verify-i18n.mjs`).
+
+**Dahil edilmedi:** Birleşik (6 tur) klasman — kullanıcı iki ayrı klasman istedi.
+
 ## [2026-07-10] — Tek teslim hakkı, optimuma uzaklık, ortalama-uzaklık klasmanı
 
 **Ne değişti:**

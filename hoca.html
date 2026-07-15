@@ -313,10 +313,10 @@ document.querySelectorAll("#roundSeg button").forEach(b => {
 function paintSeg() {
   const scen = PROBLEM.scenarios[uiRound];
   document.querySelectorAll("#roundSeg button").forEach(b => b.classList.toggle("act", +b.dataset.r === uiRound));
-  $("scenTxt").textContent = t("status.scen", { title: scenTitle(scen), demand: scen.demand });
-  // sect.scenHint oil'e özgü alanlar (wells/refs) içerir; Aşama B'de PROBLEM'e taşınacak.
+  $("scenTxt").textContent = t("status.scen", { title: scenTitle(scen), demand: PROBLEM.demand(scen) });
+  // oil hint {wells}/{refs} kullanır, tsp hint yalnızca {demand}; ikisi de PROBLEM'den.
   $("scenHint").textContent = t("sect.scenHint", {
-    title: scenTitle(scen), wells: scen.wells ? scen.wells.length : "", refs: scen.refs ? scen.refs.length : "", demand: scen.demand
+    title: scenTitle(scen), wells: scen.wells ? scen.wells.length : "", refs: scen.refs ? scen.refs.length : "", demand: PROBLEM.demand(scen)
   });
   $("durMin").value = PROBLEM.durations[uiRound];
 }
