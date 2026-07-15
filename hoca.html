@@ -142,6 +142,10 @@
         <button id="scenPlus">+10</button>
         <button id="scenMax">MAX</button>
       </div>
+      <div class="pipectl" id="scenTspCtl" hidden>
+        <button id="scenUndo"></button>
+        <button id="scenClear"></button>
+      </div>
       <p class="muted" style="font-size:14px;margin:8px 0 12px" data-i18n="play.help"></p>
 
       <svg class="network" id="netScen"></svg>
@@ -204,6 +208,8 @@
 <script src="i18n.js"></script>
 <script src="scenarios.js"></script>
 <script src="network.js"></script>
+<script src="tsp-scenarios.js"></script>
+<script src="tsp-network.js"></script>
 <script src="problems.js"></script>
 <script>
 firebase.initializeApp(FIREBASE_CONFIG);
@@ -213,6 +219,7 @@ const $ = id => document.getElementById(id);
 // Aktif problem modülü. Şimdilik sabit "oil"; problem seçici eklenince
 // state.problem'dan gelecek (bkz. Aşama C).
 let PROBLEM = PROBLEMS.oil;
+setProblem(PROBLEM.key);  // i18n resolver'ına aktif problemi bildir
 
 let uiRound = 1;          // panelde seçili tur
 let state = null;          // rtdb state
@@ -456,13 +463,24 @@ function drawScenario(scen) {
 function paintScenario(scen) {
   const solc = solFor(scen);
   const ev = PROBLEM.render($("netScen"), scen, solc, scenUi, i => onScenTap(scen, i));
-  $("scenDelivered").textContent = `${ev.delivered} / ${ev.demand}🛢`;
+  const seq = PROBLEM.controls.kind === "sequence";
+  $("scenDelivered").textContent = `${ev.delivered} / ${ev.demand}` + (seq ? "" : "🛢");
   $("scenCost").textContent = PROBLEM.fmtCost(ev.cost);
-  const done = ev.delivered === ev.demand && ev.feasible;
-  $("scenStatus").textContent = done ? t("play.valid") : "";
-  // Akış kontrol çubuğu yalnızca oil (controls.kind === "flow"). TSP kendi çubuğunu
-  // Aşama B'de sağlayacak.
-  if (PROBLEM.controls.kind === "flow") updateScenFlowBar(scen, solc);
+  $("scenStatus").textContent = ev.feasible ? t("play.valid") : "";
+  if (seq) {
+    // TSP: Geri al / Temizle çubuğu
+    $("scenCtl").hidden = true;
+    $("scenTspCtl").hidden = false;
+    $("scenUndo").textContent = t("undo");
+    $("scenClear").textContent = t("clear");
+    const canEdit = solc.length > 1;
+    $("scenUndo").disabled = !canEdit;
+    $("scenClear").disabled = !canEdit;
+  } else {
+    // oil: akış çubuğu (boru seçilince)
+    $("scenTspCtl").hidden = true;
+    updateScenFlowBar(scen, solc);
+  }
 }
 
 // oil deneme alanı akış çubuğu
@@ -513,6 +531,18 @@ $("scenMax").onclick = () => {
   paintScenario(scen);
 };
 $("scenReset").onclick = () => {
+  const scen = PROBLEM.scenarios[uiRound];
+  scenSols[solKey(scen)] = PROBLEM.emptySolution(scen);
+  scenUi = PROBLEM.initialUi();
+  paintScenario(scen);
+};
+// TSP deneme alanı: son şehri geri al / turu temizle
+$("scenUndo").onclick = () => {
+  const scen = PROBLEM.scenarios[uiRound];
+  const solc = solFor(scen);
+  if (solc.length > 1) { scenSols[solKey(scen)] = solc.slice(0, -1); paintScenario(scen); }
+};
+$("scenClear").onclick = () => {
   const scen = PROBLEM.scenarios[uiRound];
   scenSols[solKey(scen)] = PROBLEM.emptySolution(scen);
   scenUi = PROBLEM.initialUi();

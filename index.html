@@ -61,6 +61,11 @@
   #submitBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--ink) 40%); display: flex; gap: 10px; justify-content: center; }
   #submitBar button { min-width: 220px; font-size: 17px; padding: 14px; }
 
+  /* TSP kontrol çubuğu (Geri al / Temizle) — submitBar'ın hemen üstünde */
+  #tspBar { position: fixed; left: 0; right: 0; bottom: 74px; z-index: 26; display: flex; gap: 10px; justify-content: center; padding: 8px 14px; }
+  #tspBar button { min-width: 130px; font-size: 16px; padding: 12px 18px; }
+  #tspBar button:disabled { opacity: .35; }
+
   .toast { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 50; background: var(--panel2); border: 1px solid var(--slick); color: var(--paper); border-radius: 12px; padding: 10px 18px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90%; text-align: center; }
   .toast.on { opacity: 1; }
   .toast.err { border-color: var(--danger); }
@@ -133,6 +138,12 @@
   </div>
 </div>
 
+<!-- TSP kontrol çubuğu (yalnızca tsp; controls.kind === "sequence") -->
+<div id="tspBar" style="display:none">
+  <button id="tspUndo"></button>
+  <button id="tspClear"></button>
+</div>
+
 <!-- gönder çubuğu -->
 <div id="submitBar" style="display:none">
   <button class="gold" id="submitBtn" disabled></button>
@@ -146,6 +157,8 @@
 <script src="i18n.js"></script>
 <script src="scenarios.js"></script>
 <script src="network.js"></script>
+<script src="tsp-scenarios.js"></script>
+<script src="tsp-network.js"></script>
 <script src="problems.js"></script>
 <script>
 firebase.initializeApp(FIREBASE_CONFIG);
@@ -154,6 +167,7 @@ const db = firebase.database();
 // Aktif problem modülü. Şimdilik sabit "oil"; panelde problem seçici eklenince
 // state.problem'dan gelecek (bkz. Aşama C). Probleme özgü her şey buradan okunur.
 let PROBLEM = PROBLEMS.oil;
+setProblem(PROBLEM.key);  // i18n resolver'ına aktif problemi bildir
 
 // ---- yerel durum
 let myName = localStorage.getItem("soa_name") || "";
@@ -222,9 +236,14 @@ function route() {
     $("storyBox").innerHTML = `<strong class="display">${scenTitle(scen)}</strong><br>${scenStory(scen)}`;
     show("sGame");
     $("submitBar").style.display = "flex";
+    // Kontrol çubuğu problem tipine göre: oil boruya dokununca açılan pipeBar;
+    // tsp her zaman görünür tspBar (Geri al / Temizle).
+    const seq = PROBLEM.controls.kind === "sequence";
+    $("tspBar").style.display = seq ? "flex" : "none";
+    if (seq) { $("tspUndo").textContent = t("undo"); $("tspClear").textContent = t("clear"); }
     redraw();
   } else if (s.phase === "closed" || s.phase === "reveal") {
-    hidePipeBar(); $("submitBar").style.display = "none";
+    hidePipeBar(); $("submitBar").style.display = "none"; $("tspBar").style.display = "none";
     showResult(s);
   }
 }
@@ -244,6 +263,12 @@ function redraw() {
     : ok
       ? t("submit.ok", { cost: PROBLEM.fmtCost(ev.cost) })
       : t("submit.incomplete", { delivered: ev.delivered, demand: ev.demand });
+  // TSP çubuğu buton durumu (yalnız sequence): depo dışında en az bir şehir varsa aktif.
+  if (PROBLEM.controls.kind === "sequence") {
+    const canEdit = !alreadySent && sol.length > 1;
+    $("tspUndo").disabled = !canEdit;
+    $("tspClear").disabled = !canEdit;
+  }
   return ev;
 }
 
@@ -291,8 +316,17 @@ $("pbMax").onclick = () => {
   if (h <= 0) { bump(scen.step); return; }
   setFlow(ui.selected, sol[ui.selected] + h);
 };
-// boş alana tıklayınca menüyü kapat
+// boş alana tıklayınca menüyü kapat (oil pipeBar)
 $("net").addEventListener("click", e => { if (e.target === $("net")) { hidePipeBar(); redraw(); } });
+
+// ---- TSP kontrol çubuğu: son şehri geri al / turu temizle.
+// sol._round damgası korunur (yoksa route bir sonraki state olayında sıfırlar).
+$("tspUndo").onclick = () => {
+  if (sol.length > 1) { const rnd = sol._round; sol = sol.slice(0, -1); sol._round = rnd; redraw(); }
+};
+$("tspClear").onclick = () => {
+  const rnd = sol._round; sol = PROBLEM.emptySolution(scen); sol._round = rnd; ui = PROBLEM.initialUi(); redraw();
+};
 
 // WHY: ağ geometrisi SVG'nin piksel genişliğine göre seçilir (network.js →
 // netGeometry). Telefon yan çevrilince eşik aşılabilir; yeniden çizmezsek

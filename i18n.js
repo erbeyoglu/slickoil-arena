@@ -126,7 +126,17 @@ const I18N = {
     "wipe.prompt": "Şu an: Tur 1 → {c1} teslim, Tur 2 → {c2} teslim, Tur 3 → {c3} teslim.\n\n\"tur\" yaz → yalnızca Tur {round} silinsin\n\"hepsi\" yaz → üç turun tamamı silinsin",
     "wipe.roundWord": "tur",
     "wipe.allWord": "hepsi",
-    "wipe.failed": "Silinemedi: {error}\n\nVeritabanı kuralları buna izin vermiyor olabilir."
+    "wipe.failed": "Silinemedi: {error}\n\nVeritabanı kuralları buna izin vermiyor olabilir.",
+
+    // ---- TSP'ye özgü (çıplak karşılıkları oil metnini taşır; t() problem-aware)
+    "tsp.game.hint": "Şehre dokun → tura ekle. Depodan (D) çıkıp tüm şehirleri gez, depoya dön.",
+    "tsp.status.scen": "{title} — {demand} şehir",
+    "tsp.sect.scenHint": "{title} — {demand} şehir",
+    "tsp.play.help": "Şehirlere ziyaret sırasına göre tıklayın. Bu alan yalnızca sizin denemeniz içindir; skorlara işlemez.",
+    "tsp.result.optCost": "Optimal tur (Held–Karp, ~0.25 sn)",
+    "tsp.submit.incomplete": "Teslim ({delivered}/{demand} şehir)",
+    "tsp.undo": "↶ Geri al",
+    "tsp.clear": "Temizle"
   },
 
   en: {
@@ -244,7 +254,17 @@ const I18N = {
     "wipe.prompt": "Current: Round 1 → {c1} submissions, Round 2 → {c2}, Round 3 → {c3}.\n\nType \"round\" → delete only Round {round}\nType \"all\" → delete all three rounds",
     "wipe.roundWord": "round",
     "wipe.allWord": "all",
-    "wipe.failed": "Could not delete: {error}\n\nThe database rules may not allow this."
+    "wipe.failed": "Could not delete: {error}\n\nThe database rules may not allow this.",
+
+    // ---- TSP-specific (bare keys carry the oil text; t() is problem-aware)
+    "tsp.game.hint": "Tap a city → add it to the tour. Leave the depot (D), visit every city, return.",
+    "tsp.status.scen": "{title} — {demand} cities",
+    "tsp.sect.scenHint": "{title} — {demand} cities",
+    "tsp.play.help": "Tap the cities in visiting order. This area is for your own experimentation only; it does not affect scores.",
+    "tsp.result.optCost": "Optimal tour (Held–Karp, ~0.25 s)",
+    "tsp.submit.incomplete": "Submit ({delivered}/{demand} cities)",
+    "tsp.undo": "↶ Undo",
+    "tsp.clear": "Clear"
   }
 };
 
@@ -261,8 +281,16 @@ let LANG = detectLang();
 // Para biçimi dile göre ayrılır (binlik ayıracı): $1.245 (tr) / $1,245 (en)
 function i18nLocale() { return LANG === "tr" ? "tr-TR" : "en-US"; }
 
+// Aktif problem ("oil"|"tsp"). Probleme özgü metinler sözlükte "<problem>.<key>"
+// olarak durur; kabuk problem değişince setProblem çağırır.
+let activeProblemKey = null;
+function setProblem(key) { activeProblemKey = key; }
+
 function t(key, vars) {
-  let s = (I18N[LANG] && I18N[LANG][key]) != null ? I18N[LANG][key] : key;
+  const dict = I18N[LANG] || {};
+  // Önce probleme özgü varyant (oil.game.hint), yoksa çıplak anahtar.
+  const scoped = activeProblemKey ? dict[activeProblemKey + "." + key] : undefined;
+  let s = scoped != null ? scoped : (dict[key] != null ? dict[key] : key);
   if (vars) for (const k in vars) s = s.split("{" + k + "}").join(vars[k]);
   return s;
 }

@@ -132,3 +132,24 @@ details.sect > summary:hover { background: var(--panel2); }
 details.sect > summary:focus-visible { outline: 2px solid var(--slick); outline-offset: -2px; }
 details.sect > summary .hint { margin-left: auto; font: 400 13px "Barlow", sans-serif; letter-spacing: 0; text-transform: none; color: var(--muted); }
 details.sect > .sect-body { padding: 0 18px 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+
+/* ---------- TSP ağ çizici (tsp-network.js) ---------- */
+svg.network.tsp { max-width: 620px; }
+
+.tsp-edge { fill: none; stroke: var(--line); stroke-width: 1.4; }
+.tsp-edge-on {
+  stroke: var(--slick); stroke-width: 2;
+  stroke-dasharray: 4 3; animation: flow 1.1s linear infinite;
+}
+.tsp-edge-opt { stroke: var(--violet) !important; }
+@media (prefers-reduced-motion: reduce) { .tsp-edge-on { animation: none; } }
+
+.tsp-city { stroke-width: 1.6; }
+.tsp-city-depot { fill: var(--gold); stroke: var(--gold); }
+.tsp-city-visited { fill: #0d3527; stroke: var(--slick); }
+.tsp-city-idle { fill: var(--panel2); stroke: var(--line); }
+
+.tsp-order { fill: var(--slick); font: 700 7px "IBM Plex Mono", monospace; }
+.tsp-order-depot { fill: #2a1d02; }
+
+.tsp-hit { fill: transparent; cursor: pointer; }
